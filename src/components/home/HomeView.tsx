@@ -87,6 +87,7 @@ export default function HomeView() {
       {/* Footer */}
       <div className="mt-12 text-white/60 text-sm text-center">
         <p>Designed for iPad · Works offline</p>
+        <p className="text-white/40 text-xs mt-1">v1.1.0</p>
       </div>
     </div>
   );
