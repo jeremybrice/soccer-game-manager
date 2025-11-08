@@ -43,22 +43,25 @@ export class SoccerDatabase extends Dexie {
 
   /**
    * Get all active players (sorted by number)
+   * Note: Uses in-memory filtering instead of indexed query to avoid
+   * IndexedDB issues with boolean indexes
    */
   async getActivePlayers(): Promise<Player[]> {
-    return await this.players
-      .where('isActive')
-      .equals(true)
-      .sortBy('number');
+    const allPlayers = await this.players.orderBy('number').toArray();
+    const activePlayers = allPlayers.filter(p => p.isActive === true);
+    console.log(`[DB] getActivePlayers: Found ${activePlayers.length} active players out of ${allPlayers.length} total`);
+    return activePlayers;
   }
 
   /**
    * Get current active game session (if any)
+   * Note: Uses in-memory filtering instead of indexed query
    */
   async getActiveGame(): Promise<GameSession | undefined> {
-    return await this.games
-      .where('isActive')
-      .equals(true)
-      .first();
+    const allGames = await this.games.toArray();
+    const activeGame = allGames.find(g => g.isActive === true);
+    console.log(`[DB] getActiveGame: ${activeGame ? 'Found active game' : 'No active game'}`);
+    return activeGame;
   }
 
   /**
@@ -151,6 +154,7 @@ export class SoccerDatabase extends Dexie {
    */
   async savePlayer(player: Player): Promise<void> {
     await this.players.put(player);
+    console.log(`[DB] savePlayer: Saved ${player.name} (#${player.number})`);
   }
 
   /**
