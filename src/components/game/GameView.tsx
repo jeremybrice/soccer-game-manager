@@ -11,6 +11,7 @@ import { formatTime } from '../../utils/stats';
 import FieldFormation from './FieldFormation';
 import BenchArea from './BenchArea';
 import PreGameSetup from './PreGameSetup';
+import PlayingTimeSummary from './PlayingTimeSummary';
 
 export default function GameView() {
   const {
@@ -33,20 +34,121 @@ export default function GameView() {
 
   /**
    * Calculate minutes each player has been at their current position
+   * Traces back through rotation history to find when THIS player
+   * was first assigned to their CURRENT position
    */
-  const getPlayerMinutesAtCurrentPosition = (_playerId: string): number => {
+  const getPlayerMinutesAtCurrentPosition = (playerId: string): number => {
     if (!currentGame || currentGame.rotations.length === 0) return 0;
 
-    // Get the last rotation (current positions)
-    const lastRotation = currentGame.rotations[currentGame.rotations.length - 1];
+    const rotations = currentGame.rotations;
+    const currentRotation = rotations[rotations.length - 1];
+    const currentPosition = currentRotation.assignments[playerId];
 
-    // Calculate time since last rotation started
-    const lastRotationTime = lastRotation.timestamp.getTime();
-    const now = Date.now();
-    const elapsedMs = now - lastRotationTime;
-    const elapsedMinutes = Math.floor(elapsedMs / 60000);
+    // If player is on bench, return 0
+    if (!currentPosition || currentPosition === 'BENCH') return 0;
 
-    return elapsedMinutes;
+    // Find when this player was first assigned to their current position
+    // by looking backwards through rotation history
+    let startTime = currentRotation.timestamp.getTime();
+
+    for (let i = rotations.length - 2; i >= 0; i--) {
+      const prevPosition = rotations[i].assignments[playerId];
+
+      // If position changed, we found the start
+      if (prevPosition !== currentPosition) {
+        break;
+      }
+
+      // Same position, keep going back
+      startTime = rotations[i].timestamp.getTime();
+    }
+
+    const elapsedMs = Date.now() - startTime;
+    return Math.floor(elapsedMs / 60000);
+  };
+
+  /**
+   * Calculate minutes a player has been on the bench
+   * Same logic as field time, but for BENCH position
+   */
+  const getPlayerBenchTime = (playerId: string): number => {
+    if (!currentGame || currentGame.rotations.length === 0) return 0;
+
+    const rotations = currentGame.rotations;
+    const currentRotation = rotations[rotations.length - 1];
+    const currentPosition = currentRotation.assignments[playerId];
+
+    // If player is not on bench, return 0
+    if (currentPosition !== 'BENCH') return 0;
+
+    // Find when this player was first put on the bench
+    let startTime = currentRotation.timestamp.getTime();
+
+    for (let i = rotations.length - 2; i >= 0; i--) {
+      const prevPosition = rotations[i].assignments[playerId];
+
+      // If position changed, we found when they were benched
+      if (prevPosition !== 'BENCH') {
+        break;
+      }
+
+      // Still on bench, keep going back
+      startTime = rotations[i].timestamp.getTime();
+    }
+
+    const elapsedMs = Date.now() - startTime;
+    return Math.floor(elapsedMs / 60000);
+  };
+
+  /**
+   * Count how many times a player has changed positions
+   */
+  const getPlayerRotationCount = (playerId: string): number => {
+    if (!currentGame || currentGame.rotations.length <= 1) return 0;
+
+    const rotations = currentGame.rotations;
+    let rotationCount = 0;
+
+    for (let i = 1; i < rotations.length; i++) {
+      const prevPosition = rotations[i - 1].assignments[playerId];
+      const currentPosition = rotations[i].assignments[playerId];
+
+      if (prevPosition !== currentPosition) {
+        rotationCount++;
+      }
+    }
+
+    return rotationCount;
+  };
+
+  /**
+   * Calculate total field time for a player across all rotations
+   * Used for the playing time summary
+   */
+  const getPlayerTotalFieldTime = (playerId: string): number => {
+    if (!currentGame || currentGame.rotations.length === 0) return 0;
+
+    const rotations = currentGame.rotations;
+    let totalMinutes = 0;
+
+    for (let i = 0; i < rotations.length; i++) {
+      const position = rotations[i].assignments[playerId];
+      const startTime = rotations[i].timestamp.getTime();
+
+      // Find end time (next rotation or current time)
+      const endTime =
+        i < rotations.length - 1
+          ? rotations[i + 1].timestamp.getTime()
+          : Date.now();
+
+      // Only count if on field (not bench)
+      if (position !== 'BENCH') {
+        const durationMs = endTime - startTime;
+        totalMinutes += Math.floor(durationMs / 60000);
+      }
+    }
+
+    return totalMinutes;
   };
 
   const handleEndGame = async () => {
@@ -119,12 +221,20 @@ export default function GameView() {
             </div>
           </div>
 
+          {/* Playing Time Summary */}
+          <PlayingTimeSummary
+            players={players}
+            getPlayerTotalFieldTime={getPlayerTotalFieldTime}
+            totalGameMinutes={Math.floor(timer.elapsedSeconds / 60)}
+          />
+
           <FieldFormation
             assignments={currentAssignments}
             players={players}
             selectedPlayerId={selectedPlayerId}
             onPlayerSelect={handlePlayerSelect}
             getPlayerMinutes={getPlayerMinutesAtCurrentPosition}
+            getPlayerRotationCount={getPlayerRotationCount}
           />
 
           {/* Selection Help - Positioned above bench */}
@@ -143,6 +253,8 @@ export default function GameView() {
             selectedPlayerId={selectedPlayerId}
             onPlayerSelect={handlePlayerSelect}
             getPlayerMinutes={getPlayerMinutesAtCurrentPosition}
+            getPlayerBenchTime={getPlayerBenchTime}
+            getPlayerRotationCount={getPlayerRotationCount}
           />
         </div>
       </div>

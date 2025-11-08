@@ -14,6 +14,8 @@ interface BenchAreaProps {
   selectedPlayerId: string | null;
   onPlayerSelect: (playerId: string) => void;
   getPlayerMinutes: (playerId: string) => number;
+  getPlayerBenchTime: (playerId: string) => number;
+  getPlayerRotationCount: (playerId: string) => number;
 }
 
 export default function BenchArea({
@@ -22,6 +24,8 @@ export default function BenchArea({
   selectedPlayerId,
   onPlayerSelect,
   getPlayerMinutes,
+  getPlayerBenchTime,
+  getPlayerRotationCount,
 }: BenchAreaProps) {
   const { swapPlayers } = useAppStore();
 
@@ -61,6 +65,8 @@ export default function BenchArea({
                 onClick={() => handleCardClick(player.id)}
                 variant="bench"
                 minutesAtPosition={getPlayerMinutes(player.id)}
+                benchTime={getPlayerBenchTime(player.id)}
+                rotationCount={getPlayerRotationCount(player.id)}
               />
             </div>
           ))

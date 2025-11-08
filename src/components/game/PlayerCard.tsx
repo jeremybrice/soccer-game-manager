@@ -14,6 +14,8 @@ interface PlayerCardProps {
   variant?: 'field' | 'bench';
   minutesAtPosition?: number; // Time in minutes at current position
   positionLabel?: string; // Specific position label (e.g., "LM", "CD", "RF")
+  benchTime?: number; // Time in minutes on bench (for bench variant)
+  rotationCount?: number; // Number of position changes
 }
 
 export default function PlayerCard({
@@ -23,6 +25,8 @@ export default function PlayerCard({
   variant = 'field',
   minutesAtPosition = 0,
   positionLabel,
+  benchTime = 0,
+  rotationCount = 0,
 }: PlayerCardProps) {
   const baseClasses =
     'touch-target rounded-xl font-bold transform transition-all active:scale-95';
@@ -47,15 +51,30 @@ export default function PlayerCard({
   return (
     <button
       onClick={onClick}
-      className={`${baseClasses} ${variantClasses} w-20 h-20 flex flex-col items-center justify-center`}
+      className={`${baseClasses} ${variantClasses} w-20 h-20 flex flex-col items-center justify-center relative`}
     >
-      {/* Time badge - shown only if on field and has minutes */}
+      {/* Rotation count badge - top right corner */}
+      {rotationCount > 0 && (
+        <div className="absolute top-0.5 right-0.5 bg-black/60 text-white text-[8px] font-bold px-1 py-0.5 rounded-full min-w-[16px] text-center">
+          {rotationCount}×
+        </div>
+      )}
+
+      {/* Field time badge - shown only if on field and has minutes */}
       {variant === 'field' && minutesAtPosition > 0 && (
         <div className="text-[9px] font-bold opacity-90 -mt-1">
           {minutesAtPosition}m
         </div>
       )}
-      <div className={`text-2xl font-bold ${minutesAtPosition > 0 ? '-mt-0.5' : ''}`}>
+
+      {/* Bench time badge - shown only if on bench and has minutes */}
+      {variant === 'bench' && benchTime > 0 && (
+        <div className="text-[9px] font-bold opacity-70 -mt-1">
+          {benchTime}m bench
+        </div>
+      )}
+
+      <div className={`text-2xl font-bold ${(minutesAtPosition > 0 || benchTime > 0) ? '-mt-0.5' : ''}`}>
         {player.number}
       </div>
       <div className="text-xs leading-tight text-center max-w-full px-1 truncate">

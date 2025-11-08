@@ -15,6 +15,7 @@ interface FieldFormationProps {
   selectedPlayerId: string | null;
   onPlayerSelect: (playerId: string) => void;
   getPlayerMinutes: (playerId: string) => number;
+  getPlayerRotationCount: (playerId: string) => number;
 }
 
 export default function FieldFormation({
@@ -23,6 +24,7 @@ export default function FieldFormation({
   selectedPlayerId,
   onPlayerSelect,
   getPlayerMinutes,
+  getPlayerRotationCount,
 }: FieldFormationProps) {
   const { swapPlayers } = useAppStore();
 
@@ -71,6 +73,7 @@ export default function FieldFormation({
               onClick={() => handleCardClick(player.id)}
               minutesAtPosition={getPlayerMinutes(player.id)}
               positionLabel={forwardLabels[index]}
+              rotationCount={getPlayerRotationCount(player.id)}
             />
           ))}
           {/* Fill empty spots */}
@@ -97,6 +100,7 @@ export default function FieldFormation({
               onClick={() => handleCardClick(player.id)}
               minutesAtPosition={getPlayerMinutes(player.id)}
               positionLabel={midfieldLabels[index]}
+              rotationCount={getPlayerRotationCount(player.id)}
             />
           ))}
           {/* Fill empty spots */}
@@ -123,6 +127,7 @@ export default function FieldFormation({
               onClick={() => handleCardClick(player.id)}
               minutesAtPosition={getPlayerMinutes(player.id)}
               positionLabel={defenseLabels[index]}
+              rotationCount={getPlayerRotationCount(player.id)}
             />
           ))}
           {/* Fill empty spots */}
@@ -148,6 +153,7 @@ export default function FieldFormation({
               onClick={() => handleCardClick(gk.id)}
               minutesAtPosition={getPlayerMinutes(gk.id)}
               positionLabel="GK"
+              rotationCount={getPlayerRotationCount(gk.id)}
             />
           ) : (
             <div className="w-20 h-20 bg-white/20 rounded-xl border-2 border-dashed border-white/40 flex items-center justify-center">
