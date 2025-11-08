@@ -47,7 +47,7 @@ export class SoccerDatabase extends Dexie {
   async getActivePlayers(): Promise<Player[]> {
     return await this.players
       .where('isActive')
-      .equals(1)
+      .equals(true)
       .sortBy('number');
   }
 
@@ -57,7 +57,7 @@ export class SoccerDatabase extends Dexie {
   async getActiveGame(): Promise<GameSession | undefined> {
     return await this.games
       .where('isActive')
-      .equals(1)
+      .equals(true)
       .first();
   }
 
