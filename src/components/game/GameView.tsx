@@ -31,6 +31,25 @@ export default function GameView() {
     return <PreGameSetup />;
   }
 
+  /**
+   * Calculate minutes each player has been at their current position
+   */
+  const getPlayerMinutesAtCurrentPosition = (playerId: string): number => {
+    if (!currentGame || currentGame.rotations.length === 0) return 0;
+
+    // Get the last rotation (current positions)
+    const lastRotation = currentGame.rotations[currentGame.rotations.length - 1];
+    const currentPosition = lastRotation.assignments[playerId];
+
+    // Calculate time since last rotation started
+    const lastRotationTime = lastRotation.timestamp.getTime();
+    const now = Date.now();
+    const elapsedMs = now - lastRotationTime;
+    const elapsedMinutes = Math.floor(elapsedMs / 60000);
+
+    return elapsedMinutes;
+  };
+
   const handleEndGame = async () => {
     if (
       confirm(
@@ -81,12 +100,40 @@ export default function GameView() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Field Formation */}
         <div className="flex-1 bg-gradient-to-b from-field-light to-field p-4 overflow-y-auto">
+          {/* Color Legend */}
+          <div className="flex justify-center items-center space-x-3 mb-3 bg-black/20 backdrop-blur-sm rounded-lg py-2 px-3">
+            <div className="flex items-center space-x-1">
+              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+              <span className="text-white/90 text-xs font-medium">&lt;5m</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
+              <span className="text-white/90 text-xs font-medium">5-10m</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+              <span className="text-white/90 text-xs font-medium">10-15m</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-3 h-3 rounded-full bg-red-500"></div>
+              <span className="text-white/90 text-xs font-medium">&gt;15m</span>
+            </div>
+          </div>
+
           <FieldFormation
             assignments={currentAssignments}
             players={players}
             selectedPlayerId={selectedPlayerId}
             onPlayerSelect={handlePlayerSelect}
+            getPlayerMinutes={getPlayerMinutesAtCurrentPosition}
           />
+
+          {/* Selection Help - Positioned above bench */}
+          {selectedPlayerId && (
+            <div className="mt-4 bg-blue-500 text-white px-6 py-3 rounded-xl shadow-lg text-center font-semibold">
+              Tap another player to swap positions
+            </div>
+          )}
         </div>
 
         {/* Bench */}
@@ -96,6 +143,7 @@ export default function GameView() {
             players={players}
             selectedPlayerId={selectedPlayerId}
             onPlayerSelect={handlePlayerSelect}
+            getPlayerMinutes={getPlayerMinutesAtCurrentPosition}
           />
         </div>
       </div>
@@ -116,12 +164,6 @@ export default function GameView() {
         </button>
       </div>
 
-      {/* Selection Help */}
-      {selectedPlayerId && (
-        <div className="fixed bottom-24 left-0 right-0 mx-4 bg-yellow-500 text-white px-6 py-3 rounded-xl shadow-lg text-center font-semibold">
-          Tap another player to swap positions
-        </div>
-      )}
     </div>
   );
 }
