@@ -34,12 +34,11 @@ export default function GameView() {
   /**
    * Calculate minutes each player has been at their current position
    */
-  const getPlayerMinutesAtCurrentPosition = (playerId: string): number => {
+  const getPlayerMinutesAtCurrentPosition = (_playerId: string): number => {
     if (!currentGame || currentGame.rotations.length === 0) return 0;
 
     // Get the last rotation (current positions)
     const lastRotation = currentGame.rotations[currentGame.rotations.length - 1];
-    const currentPosition = lastRotation.assignments[playerId];
 
     // Calculate time since last rotation started
     const lastRotationTime = lastRotation.timestamp.getTime();
