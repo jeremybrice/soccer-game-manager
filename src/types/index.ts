@@ -130,6 +130,8 @@ export interface TimerState {
   isRunning: boolean;
   elapsedSeconds: number;
   startedAt?: Date;
+  pausedAt?: Date;
+  totalPausedDuration: number; // Total milliseconds the game has been paused
 }
 
 // ============================================================================

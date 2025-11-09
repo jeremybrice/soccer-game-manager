@@ -33,75 +33,67 @@ export default function GameView() {
   }
 
   /**
-   * Calculate minutes each player has been at their current position
-   * Traces back through rotation history to find when THIS player
-   * was first assigned to their CURRENT position
+   * Calculate minutes since player entered current zone (field or bench)
+   * Field positions (GK, DEF, MID, FWD) are treated as one zone
+   * BENCH is a separate zone
+   * Timer resets only when crossing the field ↔ bench boundary
    */
-  const getPlayerMinutesAtCurrentPosition = (playerId: string): number => {
+  const getPlayerMinutesInCurrentZone = (playerId: string): number => {
     if (!currentGame || currentGame.rotations.length === 0) return 0;
 
     const rotations = currentGame.rotations;
     const currentRotation = rotations[rotations.length - 1];
     const currentPosition = currentRotation.assignments[playerId];
 
-    // If player is on bench, return 0
-    if (!currentPosition || currentPosition === 'BENCH') return 0;
+    if (!currentPosition) return 0;
 
-    // Find when this player was first assigned to their current position
-    // by looking backwards through rotation history
+    const isOnField = currentPosition !== 'BENCH';
+
+    // Find when player last crossed the field ↔ bench boundary
     let startTime = currentRotation.timestamp.getTime();
 
     for (let i = rotations.length - 2; i >= 0; i--) {
       const prevPosition = rotations[i].assignments[playerId];
+      if (!prevPosition) continue;
 
-      // If position changed, we found the start
-      if (prevPosition !== currentPosition) {
+      const wasOnField = prevPosition !== 'BENCH';
+
+      // If zone changed (field ↔ bench), we found the transition
+      if (isOnField !== wasOnField) {
         break;
       }
 
-      // Same position, keep going back
+      // Same zone, keep going back
       startTime = rotations[i].timestamp.getTime();
     }
 
-    const elapsedMs = Date.now() - startTime;
-    return Math.floor(elapsedMs / 60000);
+    // Calculate elapsed time accounting for pauses
+    const now = timer.pausedAt ? timer.pausedAt.getTime() : Date.now();
+    const elapsedMs = now - startTime - timer.totalPausedDuration;
+
+    return Math.max(0, Math.floor(elapsedMs / 60000));
   };
 
   /**
    * Calculate minutes a player has been on the bench
-   * Same logic as field time, but for BENCH position
+   * Simply uses the zone timer for bench players
    */
   const getPlayerBenchTime = (playerId: string): number => {
     if (!currentGame || currentGame.rotations.length === 0) return 0;
 
-    const rotations = currentGame.rotations;
-    const currentRotation = rotations[rotations.length - 1];
+    const currentRotation = currentGame.rotations[currentGame.rotations.length - 1];
     const currentPosition = currentRotation.assignments[playerId];
 
     // If player is not on bench, return 0
     if (currentPosition !== 'BENCH') return 0;
 
-    // Find when this player was first put on the bench
-    let startTime = currentRotation.timestamp.getTime();
-
-    for (let i = rotations.length - 2; i >= 0; i--) {
-      const prevPosition = rotations[i].assignments[playerId];
-
-      // If position changed, we found when they were benched
-      if (prevPosition !== 'BENCH') {
-        break;
-      }
-
-      // Still on bench, keep going back
-      startTime = rotations[i].timestamp.getTime();
-    }
-
-    const elapsedMs = Date.now() - startTime;
-    return Math.floor(elapsedMs / 60000);
+    // Use the zone timer for bench time
+    return getPlayerMinutesInCurrentZone(playerId);
   };
 
   /**
-   * Count how many times a player has changed positions
+   * Count how many times a player has moved between field and bench
+   * Only counts field ↔ bench transitions, ignores position changes on field
    */
   const getPlayerRotationCount = (playerId: string): number => {
     if (!currentGame || currentGame.rotations.length <= 1) return 0;
@@ -113,7 +105,13 @@ export default function GameView() {
       const prevPosition = rotations[i - 1].assignments[playerId];
       const currentPosition = rotations[i].assignments[playerId];
 
-      if (prevPosition !== currentPosition) {
+      if (!prevPosition || !currentPosition) continue;
+
+      const wasOnField = prevPosition !== 'BENCH';
+      const isOnField = currentPosition !== 'BENCH';
+
+      // Only count if player crossed the field ↔ bench boundary
+      if (wasOnField !== isOnField) {
         rotationCount++;
       }
     }
@@ -233,7 +231,7 @@ export default function GameView() {
             players={players}
             selectedPlayerId={selectedPlayerId}
             onPlayerSelect={handlePlayerSelect}
-            getPlayerMinutes={getPlayerMinutesAtCurrentPosition}
+            getPlayerMinutes={getPlayerMinutesInCurrentZone}
             getPlayerRotationCount={getPlayerRotationCount}
           />
 
@@ -252,7 +250,7 @@ export default function GameView() {
             players={players}
             selectedPlayerId={selectedPlayerId}
             onPlayerSelect={handlePlayerSelect}
-            getPlayerMinutes={getPlayerMinutesAtCurrentPosition}
+            getPlayerMinutes={getPlayerMinutesInCurrentZone}
             getPlayerBenchTime={getPlayerBenchTime}
             getPlayerRotationCount={getPlayerRotationCount}
           />

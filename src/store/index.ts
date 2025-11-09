@@ -156,6 +156,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   timer: {
     isRunning: false,
     elapsedSeconds: 0,
+    totalPausedDuration: 0,
   },
   isLoading: false,
   error: null,
@@ -358,13 +359,32 @@ export const useAppStore = create<AppState>()((set, get) => ({
   // ========================================================================
 
   startTimer: () => {
-    set((state) => ({
-      timer: {
-        ...state.timer,
-        isRunning: true,
-        startedAt: new Date(),
-      },
-    }));
+    set((state) => {
+      const now = new Date();
+
+      // If resuming from pause, calculate pause duration
+      if (state.timer.pausedAt) {
+        const pauseDuration = now.getTime() - state.timer.pausedAt.getTime();
+        return {
+          timer: {
+            ...state.timer,
+            isRunning: true,
+            startedAt: state.timer.startedAt || now,
+            totalPausedDuration: state.timer.totalPausedDuration + pauseDuration,
+            pausedAt: undefined,
+          },
+        };
+      }
+
+      // Starting fresh
+      return {
+        timer: {
+          ...state.timer,
+          isRunning: true,
+          startedAt: now,
+        },
+      };
+    });
   },
 
   pauseTimer: () => {
@@ -372,6 +392,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       timer: {
         ...state.timer,
         isRunning: false,
+        pausedAt: new Date(),
       },
     }));
   },
@@ -381,6 +402,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
       timer: {
         isRunning: false,
         elapsedSeconds: 0,
+        totalPausedDuration: 0,
+        pausedAt: undefined,
+        startedAt: undefined,
       },
     });
   },
