@@ -315,8 +315,23 @@ export const useAppStore = create<AppState>()((set, get) => ({
         [playerId2]: pos1,
       };
 
+      // Create the new rotation object
+      const newRotation = {
+        id: crypto.randomUUID(),
+        timestamp: new Date(),
+        assignments: newAssignments,
+      };
+
       await db.addRotation(currentGame.id, newAssignments);
-      set({ currentAssignments: newAssignments });
+
+      // Update currentGame with the new rotation to keep state in sync
+      set({
+        currentAssignments: newAssignments,
+        currentGame: {
+          ...currentGame,
+          rotations: [...currentGame.rotations, newRotation],
+        },
+      });
     } catch (error) {
       set({
         error:
@@ -345,8 +360,23 @@ export const useAppStore = create<AppState>()((set, get) => ({
         newAssignments[currentPlayerAtPosition] = fromPosition;
       }
 
+      // Create the new rotation object
+      const newRotation = {
+        id: crypto.randomUUID(),
+        timestamp: new Date(),
+        assignments: newAssignments,
+      };
+
       await db.addRotation(currentGame.id, newAssignments);
-      set({ currentAssignments: newAssignments });
+
+      // Update currentGame with the new rotation to keep state in sync
+      set({
+        currentAssignments: newAssignments,
+        currentGame: {
+          ...currentGame,
+          rotations: [...currentGame.rotations, newRotation],
+        },
+      });
     } catch (error) {
       set({
         error:
