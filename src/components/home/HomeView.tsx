@@ -17,17 +17,16 @@ export default function HomeView() {
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-b from-field-light to-field">
       {/* Header */}
       <div className="text-center mb-12">
-        {/* TODO: Replace with actual Raiders shield logo image */}
-        <div className="text-6xl mb-4">🛡️</div>
+        <div className="mb-4 flex justify-center">
+          <img
+            src="https://www.northeastraiders.org/_templates/Home-New/images/logo.png"
+            alt="Raiders Logo"
+            className="h-24 w-auto"
+          />
+        </div>
         <h1 className="text-4xl font-bold text-white mb-2">
-          Raiders Game Manager
+          Game Manager
         </h1>
-        <p className="text-white/90 text-lg font-semibold">
-          St. Pete Raiders · Track, Rotate, Play Fair
-        </p>
-        <p className="text-white/70 text-sm mt-2">
-          Track. Rotate. Play fair.
-        </p>
       </div>
 
       {/* Main Actions */}
@@ -91,8 +90,7 @@ export default function HomeView() {
 
       {/* Footer */}
       <div className="mt-12 text-white/60 text-sm text-center">
-        <p>Designed for iPad · Works offline</p>
-        <p className="text-white/40 text-xs mt-1">v2.0.0 · St. Pete Raiders Edition</p>
+        <p className="text-white/40 text-xs mt-1">v2.0.2 · St. Pete Raiders Edition</p>
       </div>
     </div>
   );
