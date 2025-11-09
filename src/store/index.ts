@@ -15,6 +15,11 @@ import type {
   TimerState,
 } from '../types';
 import { db } from '../db';
+import {
+  exportPlayersToCSV as exportCSV,
+  type PlayerCSVRow,
+  type ImportResult,
+} from '../utils/csvUtils';
 
 // ============================================================================
 // Store State Interface
@@ -66,6 +71,19 @@ interface AppState {
    * Reload players from database
    */
   loadPlayers: () => Promise<void>;
+
+  /**
+   * Import players from CSV data
+   */
+  importPlayersFromCSV: (
+    csvData: PlayerCSVRow[],
+    replaceExisting: boolean
+  ) => Promise<ImportResult>;
+
+  /**
+   * Export current roster to CSV string
+   */
+  exportPlayersToCSV: () => string;
 
   // ========================================================================
   // Game Management Actions
@@ -234,6 +252,93 @@ export const useAppStore = create<AppState>()((set, get) => ({
           error instanceof Error ? error.message : 'Failed to load players',
       });
     }
+  },
+
+  importPlayersFromCSV: async (csvData, replaceExisting) => {
+    try {
+      const { players } = get();
+
+      // If replace mode, deactivate all existing players
+      if (replaceExisting) {
+        for (const player of players) {
+          await db.deletePlayer(player.id);
+        }
+      }
+
+      let imported = 0;
+      let updated = 0;
+      const errors: ImportResult['errors'] = [];
+
+      for (const csvRow of csvData) {
+        try {
+          // Check if player number already exists
+          const existing = players.find((p) => p.number === csvRow.number);
+
+          if (existing && !replaceExisting) {
+            // Update existing player
+            const updatedPlayer: Player = {
+              ...existing,
+              name: csvRow.name,
+              preferredPositions: csvRow.preferredPositions,
+            };
+            await db.savePlayer(updatedPlayer);
+            updated++;
+          } else {
+            // Create new player
+            const newPlayer: Player = {
+              id: crypto.randomUUID(),
+              number: csvRow.number,
+              name: csvRow.name,
+              preferredPositions: csvRow.preferredPositions,
+              isActive: true,
+            };
+            await db.savePlayer(newPlayer);
+            imported++;
+          }
+        } catch (error) {
+          errors.push({
+            row: csvData.indexOf(csvRow) + 2,
+            field: 'save',
+            message:
+              error instanceof Error ? error.message : 'Failed to save',
+            data: csvRow,
+          });
+        }
+      }
+
+      // Reload players
+      await get().loadPlayers();
+
+      return {
+        success: errors.length === 0,
+        imported,
+        updated,
+        errors,
+      };
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Import failed',
+      });
+      return {
+        success: false,
+        imported: 0,
+        updated: 0,
+        errors: [
+          {
+            row: 0,
+            field: 'general',
+            message:
+              error instanceof Error ? error.message : 'Unknown error',
+            data: {},
+          },
+        ],
+      };
+    }
+  },
+
+  exportPlayersToCSV: () => {
+    const { players } = get();
+    return exportCSV(players);
   },
 
   // ========================================================================
