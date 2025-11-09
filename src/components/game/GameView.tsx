@@ -183,7 +183,7 @@ export default function GameView() {
       cache[p.id] = calculatePlayerMinutesInCurrentZone(p.id, currentGame, timer);
     });
     return cache;
-  }, [currentGame?.rotations.length, timer.pausedAt, timer.totalPausedDuration, players]);
+  }, [currentGame?.rotations.length, timer.pausedAt, timer.totalPausedDuration, timer.elapsedSeconds, players]);
 
   const playerTotalFieldTime = useMemo(() => {
     if (!currentGame) return {};
@@ -192,7 +192,7 @@ export default function GameView() {
       cache[p.id] = calculatePlayerTotalFieldTime(p.id, currentGame, timer);
     });
     return cache;
-  }, [currentGame?.rotations.length, timer.pausedAt, timer.totalPausedDuration, timer.pausePeriods, players]);
+  }, [currentGame?.rotations.length, timer.pausedAt, timer.totalPausedDuration, timer.pausePeriods, timer.elapsedSeconds, players]);
 
   const playerRotationCounts = useMemo(() => {
     if (!currentGame) return {};
