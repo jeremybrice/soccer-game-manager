@@ -16,6 +16,7 @@ interface PlayerCardProps {
   positionLabel?: string; // Specific position label (e.g., "LM", "CD", "RF")
   benchTime?: number; // Time in minutes on bench (for bench variant)
   rotationCount?: number; // Number of position changes
+  isAlerted?: boolean; // Whether player has triggered 15+ min alert
 }
 
 export default function PlayerCard({
@@ -27,6 +28,7 @@ export default function PlayerCard({
   positionLabel,
   benchTime = 0,
   rotationCount = 0,
+  isAlerted = false,
 }: PlayerCardProps) {
   const baseClasses =
     'touch-target rounded-xl font-bold transform transition-all active:scale-95';
@@ -43,7 +45,9 @@ export default function PlayerCard({
     variant === 'field'
       ? isSelected
         ? 'bg-raiders-red text-white scale-110 shadow-2xl ring-4 ring-raiders-red-light'
-        : `${getTimeBasedColor(minutesAtPosition)} shadow-lg hover:shadow-xl hover:scale-105`
+        : `${getTimeBasedColor(minutesAtPosition)} shadow-lg hover:shadow-xl hover:scale-105 ${
+            isAlerted ? 'animate-pulse-ring' : ''
+          }`
       : isSelected
       ? 'bg-raiders-red text-white scale-110 shadow-2xl ring-4 ring-raiders-red-light'
       : 'bg-white/90 text-gray-900 shadow-md hover:shadow-lg';
@@ -51,7 +55,9 @@ export default function PlayerCard({
   return (
     <button
       onClick={onClick}
-      className={`${baseClasses} ${variantClasses} w-20 h-20 flex flex-col items-center justify-center relative`}
+      className={`${baseClasses} ${variantClasses} w-20 h-20 flex flex-col items-center justify-center relative ${
+        isAlerted && variant === 'field' ? 'ring-4 ring-yellow-300 ring-offset-2 ring-offset-field' : ''
+      }`}
     >
       {/* Rotation count badge - top right corner */}
       {rotationCount > 0 && (
