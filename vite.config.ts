@@ -10,11 +10,11 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Soccer Game Manager',
-        short_name: 'Soccer Manager',
-        description: 'Manage player rotations for your recreational soccer team',
-        theme_color: '#22c55e',
-        background_color: '#22c55e',
+        name: 'Raiders Game Manager',
+        short_name: 'Raiders Manager',
+        description: 'St. Pete Raiders U10 Boys Jordan - Manage player rotations and playing time',
+        theme_color: '#1B2947',
+        background_color: '#1B2947',
         display: 'standalone',
         orientation: 'portrait',
         icons: [

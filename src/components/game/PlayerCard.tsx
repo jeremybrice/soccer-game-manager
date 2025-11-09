@@ -42,10 +42,10 @@ export default function PlayerCard({
   const variantClasses =
     variant === 'field'
       ? isSelected
-        ? 'bg-blue-500 text-white scale-110 shadow-2xl ring-4 ring-blue-300'
+        ? 'bg-raiders-red text-white scale-110 shadow-2xl ring-4 ring-raiders-red-light'
         : `${getTimeBasedColor(minutesAtPosition)} shadow-lg hover:shadow-xl hover:scale-105`
       : isSelected
-      ? 'bg-blue-500 text-white scale-110 shadow-2xl ring-4 ring-blue-300'
+      ? 'bg-raiders-red text-white scale-110 shadow-2xl ring-4 ring-raiders-red-light'
       : 'bg-white/90 text-gray-900 shadow-md hover:shadow-lg';
 
   return (

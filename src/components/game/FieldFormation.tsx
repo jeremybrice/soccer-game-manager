@@ -58,7 +58,13 @@ export default function FieldFormation({
   };
 
   return (
-    <div className="h-full flex flex-col justify-between py-4">
+    <div className="h-full flex flex-col justify-between py-4 relative">
+      {/* Raiders Logo Watermark */}
+      {/* TODO: Replace with actual Raiders shield logo SVG from /public/raiders-shield.svg */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10">
+        <div className="text-[200px] select-none">🛡️</div>
+      </div>
+
       {/* Forwards (2) - Now at top */}
       <div>
         <div className="text-white/70 text-xs font-semibold mb-1 text-center uppercase tracking-wide">

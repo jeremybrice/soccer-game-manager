@@ -17,10 +17,15 @@ export default function HomeView() {
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-b from-field-light to-field">
       {/* Header */}
       <div className="text-center mb-12">
+        {/* TODO: Replace with actual Raiders shield logo image */}
+        <div className="text-6xl mb-4">🛡️</div>
         <h1 className="text-4xl font-bold text-white mb-2">
-          ⚽ Soccer Manager
+          Raiders Game Manager
         </h1>
-        <p className="text-white/90 text-lg">
+        <p className="text-white/90 text-lg font-semibold">
+          St. Pete Raiders · Track, Rotate, Play Fair
+        </p>
+        <p className="text-white/70 text-sm mt-2">
           Track. Rotate. Play fair.
         </p>
       </div>
@@ -31,7 +36,7 @@ export default function HomeView() {
         {hasActiveGame && (
           <button
             onClick={() => navigateTo('game')}
-            className="w-full touch-target bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-6 px-8 rounded-2xl shadow-lg transform transition hover:scale-105 active:scale-95"
+            className="w-full touch-target bg-raiders-red hover:bg-raiders-red-dark text-white font-bold py-6 px-8 rounded-2xl shadow-lg transform transition hover:scale-105 active:scale-95"
           >
             <div className="text-2xl mb-1">Resume Game</div>
             <div className="text-sm opacity-90">Game in progress</div>
@@ -42,10 +47,10 @@ export default function HomeView() {
         {!hasActiveGame && hasRoster && (
           <button
             onClick={() => navigateTo('game')}
-            className="w-full touch-target bg-white hover:bg-gray-50 text-field-dark font-bold py-6 px-8 rounded-2xl shadow-lg transform transition hover:scale-105 active:scale-95"
+            className="w-full touch-target bg-raiders-red hover:bg-raiders-red-dark text-white font-bold py-6 px-8 rounded-2xl shadow-lg transform transition hover:scale-105 active:scale-95"
           >
             <div className="text-2xl mb-1">Start New Game</div>
-            <div className="text-sm opacity-70">
+            <div className="text-sm opacity-90">
               {players.length} players ready
             </div>
           </button>
@@ -54,7 +59,7 @@ export default function HomeView() {
         {/* Manage Roster */}
         <button
           onClick={() => navigateTo('roster')}
-          className="w-full touch-target bg-white/20 hover:bg-white/30 backdrop-blur text-white font-semibold py-6 px-8 rounded-2xl border-2 border-white/30 transform transition hover:scale-105 active:scale-95"
+          className="w-full touch-target bg-raiders-navy-light hover:bg-raiders-navy text-white font-semibold py-6 px-8 rounded-2xl border-2 border-white/30 shadow-lg transform transition hover:scale-105 active:scale-95"
         >
           <div className="text-xl mb-1">Manage Roster</div>
           <div className="text-sm opacity-90">
@@ -67,7 +72,7 @@ export default function HomeView() {
         {/* View Stats */}
         <button
           onClick={() => navigateTo('stats')}
-          className="w-full touch-target bg-white/20 hover:bg-white/30 backdrop-blur text-white font-semibold py-6 px-8 rounded-2xl border-2 border-white/30 transform transition hover:scale-105 active:scale-95"
+          className="w-full touch-target bg-raiders-navy-light hover:bg-raiders-navy text-white font-semibold py-6 px-8 rounded-2xl border-2 border-white/30 shadow-lg transform transition hover:scale-105 active:scale-95"
         >
           <div className="text-xl mb-1">View Stats</div>
           <div className="text-sm opacity-90">Season statistics</div>
@@ -87,7 +92,7 @@ export default function HomeView() {
       {/* Footer */}
       <div className="mt-12 text-white/60 text-sm text-center">
         <p>Designed for iPad · Works offline</p>
-        <p className="text-white/40 text-xs mt-1">v1.3.0</p>
+        <p className="text-white/40 text-xs mt-1">v2.0.0 · St. Pete Raiders Edition</p>
       </div>
     </div>
   );

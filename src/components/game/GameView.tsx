@@ -237,7 +237,7 @@ export default function GameView() {
 
           {/* Selection Help - Positioned above bench */}
           {selectedPlayerId && (
-            <div className="mt-4 bg-blue-500 text-white px-6 py-3 rounded-xl shadow-lg text-center font-semibold">
+            <div className="mt-4 bg-raiders-red text-white px-6 py-3 rounded-xl shadow-lg text-center font-semibold">
               Tap another player to swap positions
             </div>
           )}
