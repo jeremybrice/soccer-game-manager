@@ -21,12 +21,15 @@ export default function HomeView() {
           <img
             src="https://www.northeastraiders.org/_templates/Home-New/images/logo.png"
             alt="Raiders Logo"
-            className="h-24 w-auto"
+            className="h-36 w-auto"
           />
         </div>
         <h1 className="text-4xl font-bold text-white mb-2">
           Game Manager
         </h1>
+        <p className="text-white/70 text-sm mt-2">
+          Track, Rotate, Play Fair
+        </p>
       </div>
 
       {/* Main Actions */}
@@ -90,7 +93,7 @@ export default function HomeView() {
 
       {/* Footer */}
       <div className="mt-12 text-white/60 text-sm text-center">
-        <p className="text-white/40 text-xs mt-1">v2.0.2 · St. Pete Raiders Edition</p>
+        <p className="text-white/40 text-xs mt-1">v2.0.3 · St. Pete Raiders Edition</p>
       </div>
     </div>
   );
