@@ -31,6 +31,20 @@ export default {
           dark: '#475569',
         }
       },
+      // Custom animations for 15-minute alert
+      keyframes: {
+        'pulse-ring': {
+          '0%, 100%': {
+            boxShadow: '0 0 0 0px rgba(250, 204, 21, 0.7)',
+          },
+          '50%': {
+            boxShadow: '0 0 0 8px rgba(250, 204, 21, 0)',
+          },
+        },
+      },
+      animation: {
+        'pulse-ring': 'pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      },
     },
   },
   plugins: [],

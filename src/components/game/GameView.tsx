@@ -5,13 +5,160 @@
  * You should be able to rotate players while watching the game.
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAppStore } from '../../store';
 import { formatTime } from '../../utils/stats';
+import type { GameSession, TimerState, PausePeriod } from '../../types';
 import FieldFormation from './FieldFormation';
 import BenchArea from './BenchArea';
 import PreGameSetup from './PreGameSetup';
 import PlayingTimeSummary from './PlayingTimeSummary';
+
+// ============================================================================
+// Helper Functions (Outside Component to Prevent Recreat ion)
+// ============================================================================
+
+/**
+ * Calculate how much time in a given segment overlaps with pause periods
+ */
+const calculatePauseOverlap = (
+  segmentStart: number,
+  segmentEnd: number,
+  pausePeriods: PausePeriod[]
+): number => {
+  let totalOverlap = 0;
+
+  for (const period of pausePeriods) {
+    const pauseStart = period.pausedAt.getTime();
+    const pauseEnd = period.resumedAt
+      ? period.resumedAt.getTime()
+      : Date.now();
+
+    // Calculate overlap using min/max logic
+    const overlapStart = Math.max(segmentStart, pauseStart);
+    const overlapEnd = Math.min(segmentEnd, pauseEnd);
+    const overlap = Math.max(0, overlapEnd - overlapStart);
+
+    totalOverlap += overlap;
+  }
+
+  return totalOverlap;
+};
+
+/**
+ * Calculate minutes since player entered current zone (field or bench)
+ * Extracted outside component to prevent recreation on every render
+ */
+const calculatePlayerMinutesInCurrentZone = (
+  playerId: string,
+  currentGame: GameSession | null,
+  timer: TimerState
+): number => {
+  if (!currentGame || currentGame.rotations.length === 0) return 0;
+
+  const rotations = currentGame.rotations;
+  const currentRotation = rotations[rotations.length - 1];
+  const currentPosition = currentRotation.assignments[playerId];
+
+  if (!currentPosition) return 0;
+
+  const isOnField = currentPosition !== 'BENCH';
+
+  // Find when player last crossed the field ↔ bench boundary
+  let startTime = currentRotation.timestamp.getTime();
+
+  for (let i = rotations.length - 2; i >= 0; i--) {
+    const prevPosition = rotations[i].assignments[playerId];
+    if (!prevPosition) continue;
+
+    const wasOnField = prevPosition !== 'BENCH';
+
+    // If zone changed (field ↔ bench), we found the transition
+    if (isOnField !== wasOnField) {
+      break;
+    }
+
+    // Same zone, keep going back
+    startTime = rotations[i].timestamp.getTime();
+  }
+
+  // Calculate elapsed time accounting for pauses
+  const now = timer.pausedAt ? timer.pausedAt.getTime() : Date.now();
+  const elapsedMs = now - startTime - timer.totalPausedDuration;
+
+  return Math.max(0, Math.floor(elapsedMs / 60000));
+};
+
+/**
+ * Calculate total field time for a player across all rotations
+ * Pause-aware version - subtracts pause overlap from each segment
+ */
+const calculatePlayerTotalFieldTime = (
+  playerId: string,
+  currentGame: GameSession | null,
+  timer: TimerState
+): number => {
+  if (!currentGame || currentGame.rotations.length === 0) return 0;
+
+  const rotations = currentGame.rotations;
+  let totalMinutes = 0;
+
+  for (let i = 0; i < rotations.length; i++) {
+    const position = rotations[i].assignments[playerId];
+    const startTime = rotations[i].timestamp.getTime();
+
+    const endTime =
+      i < rotations.length - 1
+        ? rotations[i + 1].timestamp.getTime()
+        : Date.now();
+
+    // Only count if on field (not bench)
+    if (position !== 'BENCH') {
+      const durationMs = endTime - startTime;
+
+      // Subtract pause periods that overlapped with this segment
+      const pauseOverlapMs = calculatePauseOverlap(
+        startTime,
+        endTime,
+        timer.pausePeriods || []
+      );
+
+      const actualPlayingTimeMs = durationMs - pauseOverlapMs;
+      totalMinutes += Math.floor(actualPlayingTimeMs / 60000);
+    }
+  }
+
+  return totalMinutes;
+};
+
+/**
+ * Count field ↔ bench transitions
+ */
+const calculatePlayerRotationCount = (
+  playerId: string,
+  currentGame: GameSession | null
+): number => {
+  if (!currentGame || currentGame.rotations.length <= 1) return 0;
+
+  const rotations = currentGame.rotations;
+  let rotationCount = 0;
+
+  for (let i = 1; i < rotations.length; i++) {
+    const prevPosition = rotations[i - 1].assignments[playerId];
+    const currentPosition = rotations[i].assignments[playerId];
+
+    if (!prevPosition || !currentPosition) continue;
+
+    const wasOnField = prevPosition !== 'BENCH';
+    const isOnField = currentPosition !== 'BENCH';
+
+    if (wasOnField !== isOnField) {
+      rotationCount++;
+    }
+  }
+
+  return rotationCount;
+};
 
 export default function GameView() {
   const {
@@ -26,128 +173,85 @@ export default function GameView() {
   } = useAppStore();
 
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [alertedPlayers, setAlertedPlayers] = useState<Set<string>>(new Set());
+
+  // Memoized player calculations - only recalculate when dependencies change
+  const playerZoneMinutes = useMemo(() => {
+    if (!currentGame) return {};
+    const cache: Record<string, number> = {};
+    players.forEach((p) => {
+      cache[p.id] = calculatePlayerMinutesInCurrentZone(p.id, currentGame, timer);
+    });
+    return cache;
+  }, [currentGame?.rotations.length, timer.pausedAt, timer.totalPausedDuration, players]);
+
+  const playerTotalFieldTime = useMemo(() => {
+    if (!currentGame) return {};
+    const cache: Record<string, number> = {};
+    players.forEach((p) => {
+      cache[p.id] = calculatePlayerTotalFieldTime(p.id, currentGame, timer);
+    });
+    return cache;
+  }, [currentGame?.rotations.length, timer.pausedAt, timer.totalPausedDuration, timer.pausePeriods, players]);
+
+  const playerRotationCounts = useMemo(() => {
+    if (!currentGame) return {};
+    const cache: Record<string, number> = {};
+    players.forEach((p) => {
+      cache[p.id] = calculatePlayerRotationCount(p.id, currentGame);
+    });
+    return cache;
+  }, [currentGame?.rotations.length, players]);
+
+  // Helper function for bench time (wrapper around zone minutes)
+  const getPlayerBenchTime = (playerId: string): number => {
+    if (!currentGame || currentGame.rotations.length === 0) return 0;
+    const currentRotation = currentGame.rotations[currentGame.rotations.length - 1];
+    const currentPosition = currentRotation.assignments[playerId];
+    if (currentPosition !== 'BENCH') return 0;
+    return playerZoneMinutes[playerId] || 0;
+  };
+
+  // Monitor field players and alert when they hit 15 minutes
+  useEffect(() => {
+    if (!currentGame) return;
+
+    players.forEach((player) => {
+      const position = currentAssignments[player.id];
+      const minutes = playerZoneMinutes[player.id] || 0;
+
+      // Check if field player has hit 15-minute threshold
+      if (
+        position !== 'BENCH' &&
+        minutes >= 15 &&
+        !alertedPlayers.has(player.id)
+      ) {
+        // Haptic feedback (if supported by device)
+        if (navigator.vibrate) {
+          navigator.vibrate(200); // 200ms vibration
+        }
+
+        // Add to alerted set
+        setAlertedPlayers((prev) => new Set(prev).add(player.id));
+
+        console.log(`⚠️ ALERT: Player ${player.name} (#${player.number}) has been on field for ${minutes} minutes`);
+      }
+
+      // Clear alert if player goes to bench (allow re-alert if they return to field later)
+      if (position === 'BENCH' && alertedPlayers.has(player.id)) {
+        setAlertedPlayers((prev) => {
+          const next = new Set(prev);
+          next.delete(player.id);
+          return next;
+        });
+      }
+    });
+  }, [timer.elapsedSeconds, currentGame?.rotations.length, playerZoneMinutes, currentAssignments, players, alertedPlayers]);
 
   // If no game, show pre-game setup
   if (!currentGame) {
     return <PreGameSetup />;
   }
-
-  /**
-   * Calculate minutes since player entered current zone (field or bench)
-   * Field positions (GK, DEF, MID, FWD) are treated as one zone
-   * BENCH is a separate zone
-   * Timer resets only when crossing the field ↔ bench boundary
-   */
-  const getPlayerMinutesInCurrentZone = (playerId: string): number => {
-    if (!currentGame || currentGame.rotations.length === 0) return 0;
-
-    const rotations = currentGame.rotations;
-    const currentRotation = rotations[rotations.length - 1];
-    const currentPosition = currentRotation.assignments[playerId];
-
-    if (!currentPosition) return 0;
-
-    const isOnField = currentPosition !== 'BENCH';
-
-    // Find when player last crossed the field ↔ bench boundary
-    let startTime = currentRotation.timestamp.getTime();
-
-    for (let i = rotations.length - 2; i >= 0; i--) {
-      const prevPosition = rotations[i].assignments[playerId];
-      if (!prevPosition) continue;
-
-      const wasOnField = prevPosition !== 'BENCH';
-
-      // If zone changed (field ↔ bench), we found the transition
-      if (isOnField !== wasOnField) {
-        break;
-      }
-
-      // Same zone, keep going back
-      startTime = rotations[i].timestamp.getTime();
-    }
-
-    // Calculate elapsed time accounting for pauses
-    const now = timer.pausedAt ? timer.pausedAt.getTime() : Date.now();
-    const elapsedMs = now - startTime - timer.totalPausedDuration;
-
-    return Math.max(0, Math.floor(elapsedMs / 60000));
-  };
-
-  /**
-   * Calculate minutes a player has been on the bench
-   * Simply uses the zone timer for bench players
-   */
-  const getPlayerBenchTime = (playerId: string): number => {
-    if (!currentGame || currentGame.rotations.length === 0) return 0;
-
-    const currentRotation = currentGame.rotations[currentGame.rotations.length - 1];
-    const currentPosition = currentRotation.assignments[playerId];
-
-    // If player is not on bench, return 0
-    if (currentPosition !== 'BENCH') return 0;
-
-    // Use the zone timer for bench time
-    return getPlayerMinutesInCurrentZone(playerId);
-  };
-
-  /**
-   * Count how many times a player has moved between field and bench
-   * Only counts field ↔ bench transitions, ignores position changes on field
-   */
-  const getPlayerRotationCount = (playerId: string): number => {
-    if (!currentGame || currentGame.rotations.length <= 1) return 0;
-
-    const rotations = currentGame.rotations;
-    let rotationCount = 0;
-
-    for (let i = 1; i < rotations.length; i++) {
-      const prevPosition = rotations[i - 1].assignments[playerId];
-      const currentPosition = rotations[i].assignments[playerId];
-
-      if (!prevPosition || !currentPosition) continue;
-
-      const wasOnField = prevPosition !== 'BENCH';
-      const isOnField = currentPosition !== 'BENCH';
-
-      // Only count if player crossed the field ↔ bench boundary
-      if (wasOnField !== isOnField) {
-        rotationCount++;
-      }
-    }
-
-    return rotationCount;
-  };
-
-  /**
-   * Calculate total field time for a player across all rotations
-   * Used for the playing time summary
-   */
-  const getPlayerTotalFieldTime = (playerId: string): number => {
-    if (!currentGame || currentGame.rotations.length === 0) return 0;
-
-    const rotations = currentGame.rotations;
-    let totalMinutes = 0;
-
-    for (let i = 0; i < rotations.length; i++) {
-      const position = rotations[i].assignments[playerId];
-      const startTime = rotations[i].timestamp.getTime();
-
-      // Find end time (next rotation or current time)
-      const endTime =
-        i < rotations.length - 1
-          ? rotations[i + 1].timestamp.getTime()
-          : Date.now();
-
-      // Only count if on field (not bench)
-      if (position !== 'BENCH') {
-        const durationMs = endTime - startTime;
-        totalMinutes += Math.floor(durationMs / 60000);
-      }
-    }
-
-    return totalMinutes;
-  };
 
   const handleEndGame = async () => {
     if (
@@ -222,7 +326,7 @@ export default function GameView() {
           {/* Playing Time Summary */}
           <PlayingTimeSummary
             players={players}
-            getPlayerTotalFieldTime={getPlayerTotalFieldTime}
+            getPlayerTotalFieldTime={(id) => playerTotalFieldTime[id] || 0}
             totalGameMinutes={Math.floor(timer.elapsedSeconds / 60)}
           />
 
@@ -231,8 +335,9 @@ export default function GameView() {
             players={players}
             selectedPlayerId={selectedPlayerId}
             onPlayerSelect={handlePlayerSelect}
-            getPlayerMinutes={getPlayerMinutesInCurrentZone}
-            getPlayerRotationCount={getPlayerRotationCount}
+            getPlayerMinutes={(id) => playerZoneMinutes[id] || 0}
+            getPlayerRotationCount={(id) => playerRotationCounts[id] || 0}
+            alertedPlayers={alertedPlayers}
           />
 
           {/* Selection Help - Positioned above bench */}
@@ -250,9 +355,10 @@ export default function GameView() {
             players={players}
             selectedPlayerId={selectedPlayerId}
             onPlayerSelect={handlePlayerSelect}
-            getPlayerMinutes={getPlayerMinutesInCurrentZone}
+            getPlayerMinutes={(id) => playerZoneMinutes[id] || 0}
             getPlayerBenchTime={getPlayerBenchTime}
-            getPlayerRotationCount={getPlayerRotationCount}
+            getPlayerRotationCount={(id) => playerRotationCounts[id] || 0}
+            alertedPlayers={alertedPlayers}
           />
         </div>
       </div>

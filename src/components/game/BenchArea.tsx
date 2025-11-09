@@ -16,6 +16,7 @@ interface BenchAreaProps {
   getPlayerMinutes: (playerId: string) => number;
   getPlayerBenchTime: (playerId: string) => number;
   getPlayerRotationCount: (playerId: string) => number;
+  alertedPlayers: Set<string>;
 }
 
 export default function BenchArea({
@@ -26,6 +27,7 @@ export default function BenchArea({
   getPlayerMinutes,
   getPlayerBenchTime,
   getPlayerRotationCount,
+  alertedPlayers,
 }: BenchAreaProps) {
   const { swapPlayers } = useAppStore();
 
@@ -67,6 +69,7 @@ export default function BenchArea({
                 minutesAtPosition={getPlayerMinutes(player.id)}
                 benchTime={getPlayerBenchTime(player.id)}
                 rotationCount={getPlayerRotationCount(player.id)}
+                isAlerted={alertedPlayers.has(player.id)}
               />
             </div>
           ))

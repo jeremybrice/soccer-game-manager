@@ -124,6 +124,14 @@ export interface FairnessMetrics {
 export type AppView = 'home' | 'roster' | 'game' | 'stats' | 'settings';
 
 /**
+ * Represents a single pause period during a game
+ */
+export interface PausePeriod {
+  pausedAt: Date;
+  resumedAt?: Date; // undefined if currently paused
+}
+
+/**
  * Timer state for active game
  */
 export interface TimerState {
@@ -132,6 +140,7 @@ export interface TimerState {
   startedAt?: Date;
   pausedAt?: Date;
   totalPausedDuration: number; // Total milliseconds the game has been paused
+  pausePeriods: PausePeriod[]; // Array of all pause periods for overlap calculation
 }
 
 // ============================================================================

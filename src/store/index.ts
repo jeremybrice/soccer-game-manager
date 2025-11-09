@@ -157,6 +157,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     isRunning: false,
     elapsedSeconds: 0,
     totalPausedDuration: 0,
+    pausePeriods: [],
   },
   isLoading: false,
   error: null,
@@ -365,6 +366,14 @@ export const useAppStore = create<AppState>()((set, get) => ({
       // If resuming from pause, calculate pause duration
       if (state.timer.pausedAt) {
         const pauseDuration = now.getTime() - state.timer.pausedAt.getTime();
+
+        // Close the current pause period
+        const updatedPausePeriods = [...state.timer.pausePeriods];
+        const currentPausePeriod = updatedPausePeriods[updatedPausePeriods.length - 1];
+        if (currentPausePeriod && !currentPausePeriod.resumedAt) {
+          currentPausePeriod.resumedAt = now;
+        }
+
         return {
           timer: {
             ...state.timer,
@@ -372,6 +381,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
             startedAt: state.timer.startedAt || now,
             totalPausedDuration: state.timer.totalPausedDuration + pauseDuration,
             pausedAt: undefined,
+            pausePeriods: updatedPausePeriods,
           },
         };
       }
@@ -388,11 +398,16 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   pauseTimer: () => {
+    const now = new Date();
     set((state) => ({
       timer: {
         ...state.timer,
         isRunning: false,
-        pausedAt: new Date(),
+        pausedAt: now,
+        pausePeriods: [
+          ...state.timer.pausePeriods,
+          { pausedAt: now, resumedAt: undefined },
+        ],
       },
     }));
   },
@@ -405,6 +420,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
         totalPausedDuration: 0,
         pausedAt: undefined,
         startedAt: undefined,
+        pausePeriods: [],
       },
     });
   },
