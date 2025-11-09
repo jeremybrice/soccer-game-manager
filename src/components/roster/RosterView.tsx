@@ -192,7 +192,7 @@ export default function RosterView() {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".csv"
+          accept=".csv,text/csv,application/csv"
           onChange={handleFileSelect}
           className="hidden"
         />
