@@ -5,16 +5,29 @@
  * Adding 14 kids' names should take 2 minutes, not 20.
  */
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAppStore } from '../../store';
 import type { Player } from '../../types';
 import { getPositionName } from '../../types';
 import PlayerForm from './PlayerForm';
+import ImportConfirmationModal from './ImportConfirmationModal';
+import ImportErrorModal from './ImportErrorModal';
+import {
+  parseCSVFile,
+  downloadCSV,
+  generateCSVFilename,
+  type PlayerCSVRow,
+  type ImportError,
+} from '../../utils/csvUtils';
 
 export default function RosterView() {
-  const { players, navigateTo, removePlayer } = useAppStore();
+  const { players, navigateTo, removePlayer, importPlayersFromCSV, exportPlayersToCSV, currentGame } = useAppStore();
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [csvData, setCsvData] = useState<PlayerCSVRow[] | null>(null);
+  const [importErrors, setImportErrors] = useState<ImportError[] | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAddPlayer = () => {
     setEditingPlayer(null);
@@ -37,6 +50,79 @@ export default function RosterView() {
     }
   };
 
+  // CSV Export
+  const handleExport = () => {
+    const csvContent = exportPlayersToCSV();
+    const filename = generateCSVFilename();
+    downloadCSV(csvContent, filename);
+    setSuccessMessage(`✓ Roster exported (${players.length} players)`);
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  // CSV Import - Open file picker
+  const handleImportClick = () => {
+    // Prevent import during active game
+    if (currentGame?.isActive) {
+      alert('Cannot import roster during an active game. Please end the game first.');
+      return;
+    }
+    fileInputRef.current?.click();
+  };
+
+  // CSV Import - File selected
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Parse CSV file
+    const result = await parseCSVFile(file);
+
+    if (result.success && result.players.length > 0) {
+      // Show confirmation modal
+      setCsvData(result.players);
+    } else {
+      // Show errors
+      setImportErrors(result.errors);
+    }
+
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // CSV Import - Confirmed
+  const handleImportConfirm = async (replaceExisting: boolean) => {
+    if (!csvData) return;
+
+    const result = await importPlayersFromCSV(csvData, replaceExisting);
+
+    // Close modal
+    setCsvData(null);
+
+    if (result.success) {
+      // Show success message
+      const message = replaceExisting
+        ? `✓ Roster replaced with ${result.imported} players`
+        : `✓ Imported ${result.imported} new, updated ${result.updated} existing`;
+      setSuccessMessage(message);
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } else {
+      // Show errors
+      setImportErrors(result.errors);
+    }
+  };
+
+  // CSV Import - Cancelled
+  const handleImportCancel = () => {
+    setCsvData(null);
+  };
+
+  // Error modal close
+  const handleErrorClose = () => {
+    setImportErrors(null);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header */}
@@ -53,9 +139,9 @@ export default function RosterView() {
         </div>
       </div>
 
-      {/* Player Count */}
+      {/* Player Count and Actions */}
       <div className="px-6 py-4 bg-white border-b">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <div>
             <div className="text-2xl font-bold text-gray-900">
               {players.length} / 14 Players
@@ -66,13 +152,50 @@ export default function RosterView() {
                 : `Need ${9 - players.length} more to start`}
             </div>
           </div>
+        </div>
+
+        {/* Success Message */}
+        {successMessage && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm font-semibold">
+            {successMessage}
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={handleImportClick}
+            disabled={currentGame?.isActive}
+            className="touch-target bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-3 rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            title={currentGame?.isActive ? 'Cannot import during active game' : 'Import roster from CSV'}
+          >
+            <span>📥</span> Import CSV
+          </button>
+
+          <button
+            onClick={handleExport}
+            disabled={players.length === 0}
+            className="touch-target bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-3 rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          >
+            <span>📤</span> Export CSV
+          </button>
+
           <button
             onClick={handleAddPlayer}
-            className="touch-target bg-field hover:bg-field-dark text-white font-bold px-6 py-3 rounded-xl transform transition hover:scale-105 active:scale-95"
+            className="touch-target bg-field hover:bg-field-dark text-white font-bold px-6 py-3 rounded-xl transition"
           >
             + Add Player
           </button>
         </div>
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".csv"
+          onChange={handleFileSelect}
+          className="hidden"
+        />
       </div>
 
       {/* Player List */}
@@ -155,6 +278,21 @@ export default function RosterView() {
       {/* Player Form Modal */}
       {showForm && (
         <PlayerForm player={editingPlayer} onClose={handleFormClose} />
+      )}
+
+      {/* CSV Import Confirmation Modal */}
+      {csvData && (
+        <ImportConfirmationModal
+          players={csvData}
+          existingPlayers={players}
+          onConfirm={handleImportConfirm}
+          onCancel={handleImportCancel}
+        />
+      )}
+
+      {/* CSV Import Error Modal */}
+      {importErrors && (
+        <ImportErrorModal errors={importErrors} onClose={handleErrorClose} />
       )}
     </div>
   );
