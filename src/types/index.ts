@@ -180,3 +180,47 @@ export const getPositionName = (pos: Position): string => {
 export const getPositionShort = (pos: Position): string => {
   return pos;
 };
+
+// ============================================================================
+// Help System Types
+// ============================================================================
+
+/**
+ * Help section category for organization
+ */
+export type HelpCategory = 'getting-started' | 'features' | 'reference' | 'advanced';
+
+/**
+ * A single help documentation section
+ */
+export interface HelpSection {
+  id: string;
+  title: string;
+  icon: string;
+  category: HelpCategory;
+  content: string; // Markdown content
+  keywords: string[]; // For search functionality
+  order: number;
+}
+
+/**
+ * Help modal state
+ */
+export interface HelpState {
+  isOpen: boolean;
+  activeSection?: string;
+  searchQuery: string;
+  hasSeenTutorial: boolean;
+}
+
+/**
+ * Interactive tutorial step
+ */
+export interface TutorialStep {
+  id: string;
+  title: string;
+  description: string;
+  targetElement?: string; // CSS selector for highlighting
+  position: 'top' | 'bottom' | 'left' | 'right';
+  action?: string; // Optional action text
+}

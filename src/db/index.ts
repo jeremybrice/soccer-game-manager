@@ -9,6 +9,15 @@ import Dexie, { type Table } from 'dexie';
 import type { Player, GameSession, Rotation, PositionAssignments } from '../types';
 
 /**
+ * User preference storage for app settings
+ */
+export interface UserPreference {
+  key: string;
+  value: any;
+  lastUpdated: number;
+}
+
+/**
  * Database schema
  * - players: Team roster
  * - games: Game sessions with rotation history
@@ -23,6 +32,7 @@ export class SoccerDatabase extends Dexie {
   players!: Table<Player, string>;
   games!: Table<GameSession, string>;
   rotations!: Table<Rotation, string>;
+  userPreferences!: Table<UserPreference, string>;
 
   constructor() {
     super('SoccerGameManager');
@@ -32,6 +42,14 @@ export class SoccerDatabase extends Dexie {
       players: 'id, number, isActive',
       games: 'id, date, isActive',
       rotations: 'id, timestamp, gameId',
+    });
+
+    // Schema version 2: Add user preferences table
+    this.version(2).stores({
+      players: 'id, number, isActive',
+      games: 'id, date, isActive',
+      rotations: 'id, timestamp, gameId',
+      userPreferences: 'key, lastUpdated',
     });
   }
 
@@ -203,6 +221,26 @@ export class SoccerDatabase extends Dexie {
     await this.players.clear();
     await this.games.clear();
     await this.rotations.clear();
+  }
+
+  /**
+   * Save a user preference
+   */
+  async saveUserPreference(key: string, value: any): Promise<void> {
+    await this.userPreferences.put({
+      key,
+      value,
+      lastUpdated: Date.now()
+    });
+    console.log(`[DB] saveUserPreference: Saved ${key}`);
+  }
+
+  /**
+   * Get a user preference value
+   */
+  async getUserPreference(key: string): Promise<any> {
+    const pref = await this.userPreferences.get(key);
+    return pref?.value;
   }
 }
 

@@ -35,6 +35,12 @@ interface AppState {
   currentView: AppView;
   timer: TimerState;
 
+  // Help System State
+  isHelpOpen: boolean;
+  activeHelpSection: string | null;
+  searchQuery: string;
+  hasSeenTutorial: boolean;
+
   // Loading States
   isLoading: boolean;
   error: string | null;
@@ -152,6 +158,40 @@ interface AppState {
   navigateTo: (view: AppView) => void;
 
   // ========================================================================
+  // Help System Actions
+  // ========================================================================
+
+  /**
+   * Open help modal (optionally with a specific section)
+   */
+  openHelp: (sectionId?: string) => void;
+
+  /**
+   * Close help modal
+   */
+  closeHelp: () => void;
+
+  /**
+   * Set active help section
+   */
+  setActiveHelpSection: (sectionId: string | null) => void;
+
+  /**
+   * Set search query for help content
+   */
+  setSearchQuery: (query: string) => void;
+
+  /**
+   * Mark tutorial as seen (persist to database)
+   */
+  markTutorialSeen: () => Promise<void>;
+
+  /**
+   * Load tutorial status from database
+   */
+  loadTutorialStatus: () => Promise<void>;
+
+  // ========================================================================
   // Utility Actions
   // ========================================================================
 
@@ -177,6 +217,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
     totalPausedDuration: 0,
     pausePeriods: [],
   },
+  isHelpOpen: false,
+  activeHelpSection: null,
+  searchQuery: '',
+  hasSeenTutorial: false,
   isLoading: false,
   error: null,
 
@@ -189,6 +233,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     try {
       await get().loadPlayers();
       await get().loadActiveGame();
+      await get().loadTutorialStatus();
       set({ isLoading: false });
     } catch (error) {
       set({
@@ -672,6 +717,52 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   navigateTo: (view) => {
     set({ currentView: view });
+  },
+
+  // ========================================================================
+  // Help System
+  // ========================================================================
+
+  openHelp: (sectionId) => {
+    set({
+      isHelpOpen: true,
+      activeHelpSection: sectionId || null,
+      searchQuery: '', // Clear search when opening
+    });
+  },
+
+  closeHelp: () => {
+    set({
+      isHelpOpen: false,
+      searchQuery: '', // Clear search when closing
+    });
+  },
+
+  setActiveHelpSection: (sectionId) => {
+    set({ activeHelpSection: sectionId });
+  },
+
+  setSearchQuery: (query) => {
+    set({ searchQuery: query });
+  },
+
+  markTutorialSeen: async () => {
+    try {
+      await db.saveUserPreference('hasSeenTutorial', true);
+      set({ hasSeenTutorial: true });
+    } catch (error) {
+      console.error('[Store] Failed to mark tutorial as seen:', error);
+    }
+  },
+
+  loadTutorialStatus: async () => {
+    try {
+      const seen = await db.getUserPreference('hasSeenTutorial');
+      set({ hasSeenTutorial: seen === true });
+    } catch (error) {
+      console.error('[Store] Failed to load tutorial status:', error);
+      set({ hasSeenTutorial: false });
+    }
   },
 
   // ========================================================================

@@ -6,6 +6,7 @@
  */
 
 import { useAppStore } from '../../store';
+import { HelpIcon } from '../help/HelpIcon';
 
 export default function HomeView() {
   const { navigateTo, players, currentGame } = useAppStore();
@@ -15,6 +16,11 @@ export default function HomeView() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-b from-field-light to-field">
+      {/* Help Icon - Top Right */}
+      <div className="absolute top-4 right-4">
+        <HelpIcon />
+      </div>
+
       {/* Header */}
       <div className="text-center mb-12">
         <div className="mb-4 flex justify-center">
@@ -48,6 +54,7 @@ export default function HomeView() {
         {/* Start New Game */}
         {!hasActiveGame && hasRoster && (
           <button
+            data-tour="start-game-button"
             onClick={() => navigateTo('game')}
             className="w-full touch-target bg-raiders-red hover:bg-raiders-red-dark text-white font-bold py-6 px-8 rounded-2xl shadow-lg transform transition hover:scale-105 active:scale-95"
           >
@@ -60,6 +67,7 @@ export default function HomeView() {
 
         {/* Manage Roster */}
         <button
+          data-tour="roster-button"
           onClick={() => navigateTo('roster')}
           className="w-full touch-target bg-raiders-navy-light hover:bg-raiders-navy text-white font-semibold py-6 px-8 rounded-2xl border-2 border-white/30 shadow-lg transform transition hover:scale-105 active:scale-95"
         >
@@ -73,6 +81,7 @@ export default function HomeView() {
 
         {/* View Stats */}
         <button
+          data-tour="stats-button"
           onClick={() => navigateTo('stats')}
           className="w-full touch-target bg-raiders-navy-light hover:bg-raiders-navy text-white font-semibold py-6 px-8 rounded-2xl border-2 border-white/30 shadow-lg transform transition hover:scale-105 active:scale-95"
         >
@@ -93,7 +102,7 @@ export default function HomeView() {
 
       {/* Footer */}
       <div className="mt-12 text-white/60 text-sm text-center">
-        <p className="text-white/40 text-xs mt-1">v2.1.3 · St. Pete Raiders Edition</p>
+        <p className="text-white/40 text-xs mt-1">v2.2.0 · St. Pete Raiders Edition</p>
       </div>
     </div>
   );
