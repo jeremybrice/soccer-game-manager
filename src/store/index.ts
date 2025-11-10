@@ -434,8 +434,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
         const latestRotation = game.rotations[game.rotations.length - 1];
 
         // Restore timer state from database
+        // Timer is running if it has startedAt but no pausedAt
+        const wasRunning = !!game.timerStartedAt && !game.timerPausedAt;
+
         const restoredTimerState: TimerState = {
-          isRunning: false, // Don't auto-resume, user must manually resume
+          isRunning: wasRunning,
           elapsedSeconds: 0, // Will be calculated in updateTimer
           startedAt: game.timerStartedAt,
           pausedAt: game.timerPausedAt,
