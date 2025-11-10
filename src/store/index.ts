@@ -353,7 +353,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
         currentAssignments: initialAssignments,
         currentView: 'game',
       });
-      get().startTimer();
+      // Timer starts in paused state - coach must manually start it
     } catch (error) {
       set({
         error:

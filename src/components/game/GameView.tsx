@@ -168,7 +168,6 @@ export default function GameView() {
     timer,
     startTimer,
     pauseTimer,
-    endGame,
     navigateTo,
   } = useAppStore();
 
@@ -253,16 +252,6 @@ export default function GameView() {
     return <PreGameSetup />;
   }
 
-  const handleEndGame = async () => {
-    if (
-      confirm(
-        'End this game? All rotation data will be saved for statistics.'
-      )
-    ) {
-      await endGame();
-    }
-  };
-
   const handlePlayerSelect = (playerId: string) => {
     if (selectedPlayerId === playerId) {
       setSelectedPlayerId(null); // Deselect
@@ -280,7 +269,7 @@ export default function GameView() {
             onClick={() => navigateTo('home')}
             className="text-white/90 hover:text-white font-semibold touch-target"
           >
-            ← End
+            ← Back
           </button>
 
           <div className="text-center">
@@ -372,10 +361,10 @@ export default function GameView() {
           📊 Stats
         </button>
         <button
-          onClick={handleEndGame}
-          className="flex-1 touch-target bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl"
+          onClick={() => navigateTo('home')}
+          className="flex-1 touch-target bg-raiders-navy-light hover:bg-raiders-navy text-white font-bold py-3 rounded-xl"
         >
-          End Game
+          ← Back
         </button>
       </div>
 
