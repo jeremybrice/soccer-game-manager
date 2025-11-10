@@ -6,7 +6,7 @@ Youth soccer coaching PWA for the **St. Pete Raiders U10 Boys Jordan** team. Man
 
 **Core Philosophy**: "Glanceable. One-handed operation. No thinking required."
 
-**Current Version**: v2.0.0 (stored in `package.json:4` and `HomeView.tsx:95`)
+**Current Version**: v2.1.3 (stored in `package.json:4` and `HomeView.tsx:105`)
 
 ---
 
@@ -96,6 +96,61 @@ Field/bench players show color-coded time: <5m (Green), 5-10m (Yellow), 10-15m (
 ### Formation Structure
 
 3-3-2-1: 1 GK, 3 DEF, 3 MID, 2 FWD, 5 BENCH (14 total). Minimum 9 players to start.
+
+---
+
+## Help System (v2.1.0)
+
+**Access**: Tap ❓ icon (top-right of home screen)
+
+**Features**:
+- Comprehensive searchable documentation (9 core sections)
+- Category organization: Getting Started, Features, Reference, Advanced
+- Markdown-rendered content with internal navigation
+- Context-aware links between help sections
+- Offline-capable (built-in content)
+- Data-tour attributes for future tutorial integration
+
+**Components**:
+- Help Modal: `src/components/help/HelpModal.tsx`
+- Content Data: `src/data/helpContent.ts`
+- Sidebar Navigation: `src/components/help/HelpSidebar.tsx`
+- Content Display: `src/components/help/HelpContent.tsx`
+- Search: `src/components/help/HelpSearch.tsx`
+- Help Icon: `src/components/help/HelpIcon.tsx`
+
+**State Management**:
+- Store slice: `store/index.ts` (help state and actions)
+- Database: `db/index.ts` (user preferences table, schema v2)
+- Preferences: Tutorial status saved to IndexedDB
+
+**Adding New Help Content**:
+1. Edit `src/data/helpContent.ts`
+2. Add new `HelpSection` object with markdown content
+3. Include keywords for search optimization
+4. Assign category (`getting-started`, `features`, `reference`, `advanced`) and order
+5. Test search and internal navigation links
+
+**Help Sections**:
+1. Quick Start Guide (🚀)
+2. Timer System Explained (⏱️)
+3. Player Rotations (🔄)
+4. Viewing Statistics (📊)
+5. AI Chat Assistant (🤖) - placeholder for future feature
+6. Settings (⚙️) - placeholder for future feature
+7. FAQ (❓)
+8. Troubleshooting (🐛)
+9. Rotation Strategies (🎯)
+
+**Search Implementation**:
+- Real-time filtering across titles, content, and keywords
+- Case-insensitive search
+- Highlights matching sections in sidebar
+
+**Internal Navigation**:
+- Links with `#section-id` format navigate within help modal
+- External links open in new tab
+- Custom markdown components for styling (tables, code blocks, headings)
 
 ---
 
@@ -275,5 +330,6 @@ Minute-level only (sufficient for youth soccer). Updates on component re-renders
 - v1.2.0: Per-position timers, rotation counts, summary
 - v1.3.0: Field/bench zones, pause-aware timers, simplified rotation counting
 - v2.0.0: Raiders branding - navy/red colors, team logo, updated PWA manifest
+- v2.1.0: Help system - searchable documentation, 9 help sections, markdown rendering, user preferences database
 
-*Last updated: 2025-11-08 (v2.0.0)*
+*Last updated: 2025-11-10 (v2.1.0)*

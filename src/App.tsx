@@ -11,6 +11,7 @@ import HomeView from './components/home/HomeView';
 import RosterView from './components/roster/RosterView';
 import GameView from './components/game/GameView';
 import StatsView from './components/stats/StatsView';
+import { HelpModal } from './components/help/HelpModal';
 
 export default function App() {
   const { currentView, initialize, isLoading, error } = useAppStore();
@@ -53,6 +54,9 @@ export default function App() {
       {currentView === 'roster' && <RosterView />}
       {currentView === 'game' && <GameView />}
       {currentView === 'stats' && <StatsView />}
+
+      {/* Global Help Modal */}
+      <HelpModal />
     </div>
   );
 }
