@@ -9,10 +9,15 @@ import Dexie, { type Table } from 'dexie';
 import type { Player, GameSession, Rotation, PositionAssignments } from '../types';
 
 /**
- * Database schema version 1
+ * Database schema
  * - players: Team roster
  * - games: Game sessions with rotation history
  * - rotations: Position snapshots (linked to games)
+ *
+ * Schema Changes:
+ * v1: Initial schema
+ * v2: Added timer state fields to GameSession (timerStartedAt, timerPausedAt, etc.)
+ *     Note: No migration needed as fields are optional and IndexedDB stores full objects
  */
 export class SoccerDatabase extends Dexie {
   players!: Table<Player, string>;
@@ -146,6 +151,29 @@ export class SoccerDatabase extends Dexie {
       game.isActive = false;
       game.endTime = new Date();
       await this.games.put(game);
+    }
+  }
+
+  /**
+   * Update timer state for active game
+   */
+  async updateGameTimerState(
+    gameId: string,
+    timerState: {
+      timerStartedAt?: Date;
+      timerPausedAt?: Date;
+      timerTotalPausedDuration?: number;
+      timerPausePeriods?: Array<{ pausedAt: Date; resumedAt?: Date }>;
+    }
+  ): Promise<void> {
+    const game = await this.games.get(gameId);
+    if (game) {
+      game.timerStartedAt = timerState.timerStartedAt;
+      game.timerPausedAt = timerState.timerPausedAt;
+      game.timerTotalPausedDuration = timerState.timerTotalPausedDuration ?? 0;
+      game.timerPausePeriods = timerState.timerPausePeriods ?? [];
+      await this.games.put(game);
+      console.log(`[DB] updateGameTimerState: Updated timer state for game ${gameId}`);
     }
   }
 

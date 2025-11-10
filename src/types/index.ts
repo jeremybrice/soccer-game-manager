@@ -69,6 +69,12 @@ export interface GameSession {
   isActive: boolean; // true if game is currently in progress
   startTime: Date;
   endTime?: Date;
+
+  // Timer state persistence (added for app lifecycle timer persistence)
+  timerStartedAt?: Date;
+  timerPausedAt?: Date;
+  timerTotalPausedDuration?: number;
+  timerPausePeriods?: PausePeriod[];
 }
 
 /**
