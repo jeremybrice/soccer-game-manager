@@ -280,7 +280,7 @@ export default function GameView() {
             onClick={() => navigateTo('home')}
             className="text-white/90 hover:text-white font-semibold touch-target"
           >
-            ← End
+            ← Back
           </button>
 
           <div className="text-center">
