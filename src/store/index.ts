@@ -414,11 +414,50 @@ export const useAppStore = create<AppState>()((set, get) => ({
       const pos1 = currentAssignments[playerId1];
       const pos2 = currentAssignments[playerId2];
 
-      const newAssignments = {
-        ...currentAssignments,
-        [playerId1]: pos2,
-        [playerId2]: pos1,
+      // Get all players at each position BEFORE swap, preserving current order
+      const getPlayersAtPosition = (position: Position): string[] => {
+        return Object.entries(currentAssignments)
+          .filter(([, pos]) => pos === position)
+          .map(([id]) => id);
       };
+
+      const playersAtPos1 = getPlayersAtPosition(pos1);
+      const playersAtPos2 = getPlayersAtPosition(pos2);
+
+      // Find the slot index of each player in their current position
+      const slot1 = playersAtPos1.indexOf(playerId1);
+      const slot2 = playersAtPos2.indexOf(playerId2);
+
+      // Create new player lists for each position with swapped players
+      const newPlayersAtPos1 = [...playersAtPos1];
+      const newPlayersAtPos2 = [...playersAtPos2];
+
+      // Swap: player1 goes to player2's slot, player2 goes to player1's slot
+      newPlayersAtPos1[slot1] = playerId2;
+      newPlayersAtPos2[slot2] = playerId1;
+
+      // Rebuild assignments maintaining slot order for all positions
+      // Process positions in order: GK, DEF, MID, FWD, BENCH
+      const newAssignments: PositionAssignments = {};
+      const positionOrder: Position[] = ['GK', 'DEF', 'MID', 'FWD', 'BENCH'];
+
+      positionOrder.forEach((position) => {
+        let orderedPlayerIds: string[];
+
+        if (position === pos1) {
+          orderedPlayerIds = newPlayersAtPos1;
+        } else if (position === pos2) {
+          orderedPlayerIds = newPlayersAtPos2;
+        } else {
+          // For other positions, maintain existing order
+          orderedPlayerIds = getPlayersAtPosition(position);
+        }
+
+        // Add players to assignments in order
+        orderedPlayerIds.forEach((playerId) => {
+          newAssignments[playerId] = position;
+        });
+      });
 
       // Create the new rotation object
       const newRotation = {
