@@ -6,7 +6,7 @@ Youth soccer coaching PWA for the **St. Pete Raiders U10 Boys Jordan** team. Man
 
 **Core Philosophy**: "Glanceable. One-handed operation. No thinking required."
 
-**Current Version**: v2.1.3 (stored in `package.json:4` and `HomeView.tsx:105`)
+**Current Version**: v2.2.0 (stored in `package.json:4` and `HomeView.tsx:105`)
 
 ---
 
@@ -99,7 +99,7 @@ Field/bench players show color-coded time: <5m (Green), 5-10m (Yellow), 10-15m (
 
 ---
 
-## Help System (v2.1.0)
+## Help System (v2.2.0)
 
 **Access**: Tap ❓ icon (top-right of home screen)
 
@@ -331,5 +331,6 @@ Minute-level only (sufficient for youth soccer). Updates on component re-renders
 - v1.3.0: Field/bench zones, pause-aware timers, simplified rotation counting
 - v2.0.0: Raiders branding - navy/red colors, team logo, updated PWA manifest
 - v2.1.0: Help system - searchable documentation, 9 help sections, markdown rendering, user preferences database
+- v2.2.0: Version bump for help system release
 
-*Last updated: 2025-11-10 (v2.1.0)*
+*Last updated: 2025-11-10 (v2.2.0)*
