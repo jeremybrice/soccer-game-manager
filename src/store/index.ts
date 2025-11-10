@@ -387,9 +387,23 @@ export const useAppStore = create<AppState>()((set, get) => ({
       const game = await db.getActiveGame();
       if (game && game.rotations.length > 0) {
         const latestRotation = game.rotations[game.rotations.length - 1];
+
+        // Restore timer state from database
+        const restoredTimerState: TimerState = {
+          isRunning: false, // Don't auto-resume, user must manually resume
+          elapsedSeconds: 0, // Will be calculated in updateTimer
+          startedAt: game.timerStartedAt,
+          pausedAt: game.timerPausedAt,
+          totalPausedDuration: game.timerTotalPausedDuration ?? 0,
+          pausePeriods: game.timerPausePeriods ?? [],
+        };
+
+        console.log('[Store] loadActiveGame: Restored timer state', restoredTimerState);
+
         set({
           currentGame: game,
           currentAssignments: latestRotation.assignments,
+          timer: restoredTimerState,
         });
       }
     } catch (error) {
@@ -548,33 +562,53 @@ export const useAppStore = create<AppState>()((set, get) => ({
           currentPausePeriod.resumedAt = now;
         }
 
-        return {
-          timer: {
-            ...state.timer,
-            isRunning: true,
-            startedAt: state.timer.startedAt || now,
-            totalPausedDuration: state.timer.totalPausedDuration + pauseDuration,
-            pausedAt: undefined,
-            pausePeriods: updatedPausePeriods,
-          },
+        const newTimerState = {
+          ...state.timer,
+          isRunning: true,
+          startedAt: state.timer.startedAt || now,
+          totalPausedDuration: state.timer.totalPausedDuration + pauseDuration,
+          pausedAt: undefined,
+          pausePeriods: updatedPausePeriods,
         };
+
+        // Persist timer state to database
+        if (state.currentGame) {
+          db.updateGameTimerState(state.currentGame.id, {
+            timerStartedAt: newTimerState.startedAt,
+            timerPausedAt: undefined,
+            timerTotalPausedDuration: newTimerState.totalPausedDuration,
+            timerPausePeriods: newTimerState.pausePeriods,
+          });
+        }
+
+        return { timer: newTimerState };
       }
 
       // Starting fresh
-      return {
-        timer: {
-          ...state.timer,
-          isRunning: true,
-          startedAt: now,
-        },
+      const newTimerState = {
+        ...state.timer,
+        isRunning: true,
+        startedAt: now,
       };
+
+      // Persist timer state to database
+      if (state.currentGame) {
+        db.updateGameTimerState(state.currentGame.id, {
+          timerStartedAt: now,
+          timerPausedAt: undefined,
+          timerTotalPausedDuration: 0,
+          timerPausePeriods: [],
+        });
+      }
+
+      return { timer: newTimerState };
     });
   },
 
   pauseTimer: () => {
     const now = new Date();
-    set((state) => ({
-      timer: {
+    set((state) => {
+      const newTimerState = {
         ...state.timer,
         isRunning: false,
         pausedAt: now,
@@ -582,8 +616,20 @@ export const useAppStore = create<AppState>()((set, get) => ({
           ...state.timer.pausePeriods,
           { pausedAt: now, resumedAt: undefined },
         ],
-      },
-    }));
+      };
+
+      // Persist timer state to database
+      if (state.currentGame) {
+        db.updateGameTimerState(state.currentGame.id, {
+          timerStartedAt: newTimerState.startedAt,
+          timerPausedAt: now,
+          timerTotalPausedDuration: newTimerState.totalPausedDuration,
+          timerPausePeriods: newTimerState.pausePeriods,
+        });
+      }
+
+      return { timer: newTimerState };
+    });
   },
 
   resetTimer: () => {
@@ -601,11 +647,20 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   updateTimer: () => {
     set((state) => {
-      if (!state.timer.isRunning) return state;
+      // Calculate elapsed seconds from startedAt timestamp (like player timers)
+      // This makes timer persistent across app lifecycle
+      if (!state.timer.startedAt) {
+        return state;
+      }
+
+      const now = state.timer.pausedAt ? state.timer.pausedAt.getTime() : Date.now();
+      const elapsedMs = now - state.timer.startedAt.getTime() - state.timer.totalPausedDuration;
+      const elapsedSeconds = Math.max(0, Math.floor(elapsedMs / 1000));
+
       return {
         timer: {
           ...state.timer,
-          elapsedSeconds: state.timer.elapsedSeconds + 1,
+          elapsedSeconds,
         },
       };
     });
@@ -633,10 +688,12 @@ export const useAppStore = create<AppState>()((set, get) => ({
 // ============================================================================
 
 // Start timer interval
+// Note: Runs even when paused to recalculate elapsed time on app reopen
 if (typeof window !== 'undefined') {
   setInterval(() => {
     const state = useAppStore.getState();
-    if (state.timer.isRunning) {
+    // Update timer if running OR if we have a startedAt timestamp (for recalculation after app reopen)
+    if (state.timer.isRunning || state.timer.startedAt) {
       state.updateTimer();
     }
   }, 1000);
