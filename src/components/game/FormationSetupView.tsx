@@ -8,16 +8,13 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../../store';
 import type { Position, PositionAssignments, FormationType } from '../../types';
-import { FORMATION_A, FORMATION_B, MIN_PLAYERS_TO_START, RECOMMENDED_MIN_PLAYERS } from '../../types';
+import { MIN_PLAYERS_TO_START, RECOMMENDED_MIN_PLAYERS } from '../../types';
 import FormationSelector from './FormationSelector';
 import FormationPreview from './FormationPreview';
 
 export default function FormationSetupView() {
   const { players, startGame, navigateTo, selectedFormation, setFormation } = useAppStore();
   const [assignments, setAssignments] = useState<PositionAssignments>({});
-
-  // Get current formation config
-  const currentFormation = selectedFormation === 'A' ? FORMATION_A : FORMATION_B;
 
   // Auto-assign positions when component mounts or formation changes
   useEffect(() => {
@@ -161,32 +158,6 @@ export default function FormationSetupView() {
                 </div>
                 <div className="text-sm text-gray-600 font-medium">On Bench</div>
               </div>
-            </div>
-          </div>
-
-          {/* Position Breakdown */}
-          <div className="bg-white/90 backdrop-blur rounded-xl p-4 shadow-lg">
-            <h3 className="font-bold text-gray-900 mb-3">Position Assignments</h3>
-            <div className="space-y-2">
-              {(['GK', 'DEF', 'MID', 'FWD'] as Position[]).map((position) => {
-                const count = Object.values(assignments).filter(p => p === position).length;
-                const expected = currentFormation[position];
-                const isCorrect = count === expected;
-
-                return (
-                  <div
-                    key={position}
-                    className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg"
-                  >
-                    <span className="font-semibold text-gray-700">
-                      {position === 'GK' ? 'Goalkeeper' : position === 'DEF' ? 'Defense' : position === 'MID' ? 'Midfield' : 'Forward'}
-                    </span>
-                    <span className={`font-bold ${isCorrect ? 'text-green-600' : 'text-orange-600'}`}>
-                      {count} / {expected}
-                    </span>
-                  </div>
-                );
-              })}
             </div>
           </div>
 
