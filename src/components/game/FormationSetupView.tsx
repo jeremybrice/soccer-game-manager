@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../../store';
 import type { Position, PositionAssignments, FormationType } from '../../types';
-import { MIN_PLAYERS_TO_START, RECOMMENDED_MIN_PLAYERS } from '../../types';
+import { FORMATION_A, FORMATION_B, MIN_PLAYERS_TO_START, RECOMMENDED_MIN_PLAYERS } from '../../types';
 import FormationSelector from './FormationSelector';
 import FormationPreview from './FormationPreview';
 
