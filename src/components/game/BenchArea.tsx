@@ -4,7 +4,7 @@
  * Philosophy: Quick access to substitutes. Clear visual distinction from field.
  */
 
-import type { Player, PositionAssignments } from '../../types';
+import type { Player, PositionAssignments, StagedSwap } from '../../types';
 import { useAppStore } from '../../store';
 import PlayerCard from './PlayerCard';
 
@@ -17,6 +17,7 @@ interface BenchAreaProps {
   getPlayerBenchTime: (playerId: string) => number;
   getPlayerRotationCount: (playerId: string) => number;
   alertedPlayers: Set<string>;
+  stagedSwaps?: StagedSwap[];
 }
 
 export default function BenchArea({
@@ -28,6 +29,7 @@ export default function BenchArea({
   getPlayerBenchTime,
   getPlayerRotationCount,
   alertedPlayers,
+  stagedSwaps = [],
 }: BenchAreaProps) {
   const { swapPlayers } = useAppStore();
 
@@ -36,6 +38,15 @@ export default function BenchArea({
     .filter(([, pos]) => pos === 'BENCH')
     .map(([playerId]) => players.find((p) => p.id === playerId))
     .filter((p): p is Player => p !== undefined);
+
+  // Check if bench player is in a staged swap
+  const getPlayerStagedStatus = (playerId: string): { isStaged: boolean; direction?: 'toField' | 'toBench' } => {
+    const swap = stagedSwaps.find(s => s.benchPlayerId === playerId);
+    if (swap) {
+      return { isStaged: true, direction: 'toField' };
+    }
+    return { isStaged: false };
+  };
 
   const handleCardClick = async (playerId: string) => {
     if (selectedPlayerId && selectedPlayerId !== playerId) {
@@ -59,20 +70,25 @@ export default function BenchArea({
             All players are on the field
           </div>
         ) : (
-          benchPlayers.map((player) => (
-            <div key={player.id} className="flex-shrink-0">
-              <PlayerCard
-                player={player}
-                isSelected={selectedPlayerId === player.id}
-                onClick={() => handleCardClick(player.id)}
-                variant="bench"
-                minutesAtPosition={getPlayerMinutes(player.id)}
-                benchTime={getPlayerBenchTime(player.id)}
-                rotationCount={getPlayerRotationCount(player.id)}
-                isAlerted={alertedPlayers.has(player.id)}
-              />
-            </div>
-          ))
+          benchPlayers.map((player) => {
+            const stagedStatus = getPlayerStagedStatus(player.id);
+            return (
+              <div key={player.id} className="flex-shrink-0">
+                <PlayerCard
+                  player={player}
+                  isSelected={selectedPlayerId === player.id}
+                  onClick={() => handleCardClick(player.id)}
+                  variant="bench"
+                  minutesAtPosition={getPlayerMinutes(player.id)}
+                  benchTime={getPlayerBenchTime(player.id)}
+                  rotationCount={getPlayerRotationCount(player.id)}
+                  isAlerted={alertedPlayers.has(player.id)}
+                  isStaged={stagedStatus.isStaged}
+                  stagedDirection={stagedStatus.direction}
+                />
+              </div>
+            );
+          })
         )}
       </div>
     </div>

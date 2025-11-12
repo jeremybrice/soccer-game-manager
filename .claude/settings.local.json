@@ -4,7 +4,11 @@
       "WebFetch(domain:soccer-game-manager.netlify.app)",
       "Bash(npx playwright install:*)",
       "Bash(npx playwright test:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx --no-install typescript:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

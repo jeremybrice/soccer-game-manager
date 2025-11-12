@@ -20,9 +20,11 @@
 export type Position = 'GK' | 'DEF' | 'MID' | 'FWD' | 'BENCH';
 
 /**
- * Formation configuration - immutable structure
+ * Formation configuration - immutable structures
+ * Formation A: 3-3-2-1 (3 DEF, 3 MID, 2 FWD, 1 GK)
+ * Formation B: 3-4-1-1 (3 DEF, 4 MID, 1 FWD, 1 GK)
  */
-export const FORMATION = {
+export const FORMATION_A = {
   GK: 1,
   DEF: 3,
   MID: 3,
@@ -30,8 +32,23 @@ export const FORMATION = {
   BENCH: 5, // 14 total - 9 on field = 5 on bench
 } as const;
 
+export const FORMATION_B = {
+  GK: 1,
+  DEF: 3,
+  MID: 4,
+  FWD: 1,
+  BENCH: 5, // 14 total - 9 on field = 5 on bench
+} as const;
+
+// Legacy export for backward compatibility
+export const FORMATION = FORMATION_A;
+
+export type FormationType = 'A' | 'B';
+
 export const TOTAL_PLAYERS = 14;
 export const FIELD_PLAYERS = 9;
+export const MIN_PLAYERS_TO_START = 7; // 1 GK + 6 field players
+export const RECOMMENDED_MIN_PLAYERS = 9; // Show warning below this
 
 // ============================================================================
 // Player Types
@@ -223,4 +240,19 @@ export interface TutorialStep {
   targetElement?: string; // CSS selector for highlighting
   position: 'top' | 'bottom' | 'left' | 'right';
   action?: string; // Optional action text
+}
+
+// ============================================================================
+// Staged Rotations Types
+// ============================================================================
+
+/**
+ * A pending player swap in planning mode
+ * Represents bench player → field player swap to be executed later
+ */
+export interface StagedSwap {
+  id: string;
+  benchPlayerId: string;
+  fieldPlayerId: string;
+  timestamp: number;
 }

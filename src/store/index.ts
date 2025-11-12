@@ -13,6 +13,8 @@ import type {
   PositionAssignments,
   AppView,
   TimerState,
+  FormationType,
+  StagedSwap,
 } from '../types';
 import { db } from '../db';
 import {
@@ -34,6 +36,13 @@ interface AppState {
   // UI State
   currentView: AppView;
   timer: TimerState;
+
+  // Formation State
+  selectedFormation: FormationType;
+
+  // Staged Rotations State
+  planningMode: boolean;
+  stagedSwaps: StagedSwap[];
 
   // Help System State
   isHelpOpen: boolean;
@@ -158,6 +167,49 @@ interface AppState {
   navigateTo: (view: AppView) => void;
 
   // ========================================================================
+  // Formation Actions
+  // ========================================================================
+
+  /**
+   * Set the selected formation (A or B)
+   */
+  setFormation: (formation: FormationType) => Promise<void>;
+
+  /**
+   * Load formation preference from database
+   */
+  loadFormationPreference: () => Promise<void>;
+
+  // ========================================================================
+  // Staged Rotations Actions
+  // ========================================================================
+
+  /**
+   * Toggle planning mode on/off
+   */
+  togglePlanningMode: () => void;
+
+  /**
+   * Stage a player swap (bench player → field player)
+   */
+  stageSwap: (benchPlayerId: string, fieldPlayerId: string) => void;
+
+  /**
+   * Remove a staged swap by ID
+   */
+  unstageSwap: (swapId: string) => void;
+
+  /**
+   * Clear all staged swaps
+   */
+  clearStagedSwaps: () => void;
+
+  /**
+   * Execute all staged swaps simultaneously
+   */
+  executeStagedSwaps: () => Promise<void>;
+
+  // ========================================================================
   // Help System Actions
   // ========================================================================
 
@@ -217,6 +269,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
     totalPausedDuration: 0,
     pausePeriods: [],
   },
+  selectedFormation: 'A',
+  planningMode: false,
+  stagedSwaps: [],
   isHelpOpen: false,
   activeHelpSection: null,
   searchQuery: '',
@@ -234,6 +289,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       await get().loadPlayers();
       await get().loadActiveGame();
       await get().loadTutorialStatus();
+      await get().loadFormationPreference();
       set({ isLoading: false });
     } catch (error) {
       set({
@@ -765,6 +821,182 @@ export const useAppStore = create<AppState>()((set, get) => ({
     } catch (error) {
       console.error('[Store] Failed to load tutorial status:', error);
       set({ hasSeenTutorial: false });
+    }
+  },
+
+  // ========================================================================
+  // Formation Management
+  // ========================================================================
+
+  setFormation: async (formation) => {
+    try {
+      await db.saveUserPreference('selectedFormation', formation);
+      set({ selectedFormation: formation });
+      console.log(`[Store] Formation set to ${formation}`);
+    } catch (error) {
+      console.error('[Store] Failed to save formation preference:', error);
+      set({
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to save formation preference',
+      });
+    }
+  },
+
+  loadFormationPreference: async () => {
+    try {
+      const formation = await db.getUserPreference('selectedFormation');
+      if (formation === 'A' || formation === 'B') {
+        set({ selectedFormation: formation });
+        console.log(`[Store] Loaded formation preference: ${formation}`);
+      } else {
+        // Default to Formation A
+        set({ selectedFormation: 'A' });
+      }
+    } catch (error) {
+      console.error('[Store] Failed to load formation preference:', error);
+      set({ selectedFormation: 'A' });
+    }
+  },
+
+  // ========================================================================
+  // Staged Rotations Management
+  // ========================================================================
+
+  togglePlanningMode: () => {
+    set((state) => ({
+      planningMode: !state.planningMode,
+      // Clear staged swaps when exiting planning mode
+      stagedSwaps: !state.planningMode ? state.stagedSwaps : [],
+    }));
+  },
+
+  stageSwap: (benchPlayerId, fieldPlayerId) => {
+    set((state) => {
+      // Check if either player is already in a staged swap
+      const existingSwapIndex = state.stagedSwaps.findIndex(
+        (swap) =>
+          swap.benchPlayerId === benchPlayerId ||
+          swap.fieldPlayerId === fieldPlayerId
+      );
+
+      let newStagedSwaps: StagedSwap[];
+
+      if (existingSwapIndex >= 0) {
+        // Replace existing swap involving these players
+        newStagedSwaps = [...state.stagedSwaps];
+        newStagedSwaps[existingSwapIndex] = {
+          id: crypto.randomUUID(),
+          benchPlayerId,
+          fieldPlayerId,
+          timestamp: Date.now(),
+        };
+      } else {
+        // Add new swap
+        newStagedSwaps = [
+          ...state.stagedSwaps,
+          {
+            id: crypto.randomUUID(),
+            benchPlayerId,
+            fieldPlayerId,
+            timestamp: Date.now(),
+          },
+        ];
+      }
+
+      console.log(`[Store] Staged swap: Bench #${benchPlayerId} ↔ Field #${fieldPlayerId}`);
+      return { stagedSwaps: newStagedSwaps };
+    });
+  },
+
+  unstageSwap: (swapId) => {
+    set((state) => ({
+      stagedSwaps: state.stagedSwaps.filter((swap) => swap.id !== swapId),
+    }));
+  },
+
+  clearStagedSwaps: () => {
+    set({ stagedSwaps: [] });
+    console.log('[Store] Cleared all staged swaps');
+  },
+
+  executeStagedSwaps: async () => {
+    const { stagedSwaps, currentAssignments, currentGame } = get();
+
+    if (!currentGame || stagedSwaps.length === 0) {
+      console.log('[Store] No staged swaps to execute');
+      return;
+    }
+
+    try {
+      // Validate all staged swaps are still valid
+      const invalidSwaps: string[] = [];
+
+      for (const swap of stagedSwaps) {
+        const benchPos = currentAssignments[swap.benchPlayerId];
+        const fieldPos = currentAssignments[swap.fieldPlayerId];
+
+        if (benchPos !== 'BENCH') {
+          invalidSwaps.push(
+            `Player ${swap.benchPlayerId} is no longer on bench`
+          );
+        }
+        if (fieldPos === 'BENCH') {
+          invalidSwaps.push(
+            `Player ${swap.fieldPlayerId} is no longer on field`
+          );
+        }
+      }
+
+      if (invalidSwaps.length > 0) {
+        set({
+          error: `Cannot execute swaps: ${invalidSwaps.join(', ')}`,
+        });
+        // Clear invalid staged swaps
+        get().clearStagedSwaps();
+        return;
+      }
+
+      // Execute all swaps simultaneously by building new assignments
+      let newAssignments = { ...currentAssignments };
+
+      for (const swap of stagedSwaps) {
+        const fieldPosition = newAssignments[swap.fieldPlayerId];
+        // Swap positions
+        newAssignments[swap.benchPlayerId] = fieldPosition;
+        newAssignments[swap.fieldPlayerId] = 'BENCH';
+      }
+
+      // Save rotation to database
+      await db.addRotation(currentGame.id, newAssignments);
+
+      // Create the new rotation object
+      const newRotation = {
+        id: crypto.randomUUID(),
+        timestamp: new Date(),
+        assignments: newAssignments,
+      };
+
+      // Update store
+      set({
+        currentAssignments: newAssignments,
+        currentGame: {
+          ...currentGame,
+          rotations: [...currentGame.rotations, newRotation],
+        },
+        stagedSwaps: [], // Clear staged swaps after execution
+        planningMode: false, // Exit planning mode
+      });
+
+      console.log(`[Store] Executed ${stagedSwaps.length} staged swaps`);
+    } catch (error) {
+      set({
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to execute staged swaps',
+      });
     }
   },
 

@@ -5,7 +5,8 @@
  * Portrait layout: Forwards at top, GK at bottom (attacking downward).
  */
 
-import type { Player, Position, PositionAssignments } from '../../types';
+import type { Player, Position, PositionAssignments, StagedSwap } from '../../types';
+import { FORMATION_A, FORMATION_B } from '../../types';
 import { useAppStore } from '../../store';
 import PlayerCard from './PlayerCard';
 
@@ -17,6 +18,7 @@ interface FieldFormationProps {
   getPlayerMinutes: (playerId: string) => number;
   getPlayerRotationCount: (playerId: string) => number;
   alertedPlayers: Set<string>;
+  stagedSwaps?: StagedSwap[];
 }
 
 export default function FieldFormation({
@@ -27,8 +29,21 @@ export default function FieldFormation({
   getPlayerMinutes,
   getPlayerRotationCount,
   alertedPlayers,
+  stagedSwaps = [],
 }: FieldFormationProps) {
-  const { swapPlayers } = useAppStore();
+  const { swapPlayers, selectedFormation } = useAppStore();
+
+  // Get current formation configuration
+  const formationConfig = selectedFormation === 'A' ? FORMATION_A : FORMATION_B;
+
+  // Check if player is in a staged swap
+  const getPlayerStagedStatus = (playerId: string): { isStaged: boolean; direction?: 'toField' | 'toBench' } => {
+    const swap = stagedSwaps.find(s => s.fieldPlayerId === playerId);
+    if (swap) {
+      return { isStaged: true, direction: 'toBench' };
+    }
+    return { isStaged: false };
+  };
 
   // Get players by position
   const getPlayersAtPosition = (position: Position): Player[] => {
@@ -43,10 +58,16 @@ export default function FieldFormation({
   const midfielders = getPlayersAtPosition('MID');
   const forwards = getPlayersAtPosition('FWD');
 
-  // Position labels based on array index
-  const forwardLabels = ['LF', 'RF']; // Left Forward, Right Forward
-  const midfieldLabels = ['LM', 'CM', 'RM']; // Left/Center/Right Midfield
-  const defenseLabels = ['LD', 'CD', 'RD']; // Left/Center/Right Defense
+  // Position labels based on array index and formation
+  const forwardLabels = selectedFormation === 'A'
+    ? ['LF', 'RF'] // Formation A: 2 forwards
+    : ['CF']; // Formation B: 1 forward (center)
+
+  const midfieldLabels = selectedFormation === 'A'
+    ? ['LM', 'CM', 'RM'] // Formation A: 3 midfielders
+    : ['LM', 'CLM', 'CRM', 'RM']; // Formation B: 4 midfielders
+
+  const defenseLabels = ['LD', 'CD', 'RD']; // Always 3 defenders
 
   const handleCardClick = async (playerId: string) => {
     if (selectedPlayerId && selectedPlayerId !== playerId) {
@@ -67,26 +88,31 @@ export default function FieldFormation({
         <div className="text-[200px] select-none">🛡️</div>
       </div>
 
-      {/* Forwards (2) - Now at top */}
+      {/* Forwards - Now at top */}
       <div>
         <div className="text-white/70 text-xs font-semibold mb-1 text-center uppercase tracking-wide">
           Forward
         </div>
         <div className="flex justify-center space-x-8">
-          {forwards.map((player, index) => (
-            <PlayerCard
-              key={player.id}
-              player={player}
-              isSelected={selectedPlayerId === player.id}
-              onClick={() => handleCardClick(player.id)}
-              minutesAtPosition={getPlayerMinutes(player.id)}
-              positionLabel={forwardLabels[index]}
-              rotationCount={getPlayerRotationCount(player.id)}
-              isAlerted={alertedPlayers.has(player.id)}
-            />
-          ))}
+          {forwards.map((player, index) => {
+            const stagedStatus = getPlayerStagedStatus(player.id);
+            return (
+              <PlayerCard
+                key={player.id}
+                player={player}
+                isSelected={selectedPlayerId === player.id}
+                onClick={() => handleCardClick(player.id)}
+                minutesAtPosition={getPlayerMinutes(player.id)}
+                positionLabel={forwardLabels[index]}
+                rotationCount={getPlayerRotationCount(player.id)}
+                isAlerted={alertedPlayers.has(player.id)}
+                isStaged={stagedStatus.isStaged}
+                stagedDirection={stagedStatus.direction}
+              />
+            );
+          })}
           {/* Fill empty spots */}
-          {Array.from({ length: 2 - forwards.length }).map((_, i) => (
+          {Array.from({ length: formationConfig.FWD - forwards.length }).map((_, i) => (
             <div
               key={`fwd-empty-${i}`}
               className="w-20 h-20 bg-white/20 rounded-xl border-2 border-dashed border-white/40"
@@ -95,26 +121,31 @@ export default function FieldFormation({
         </div>
       </div>
 
-      {/* Midfielders (3) */}
+      {/* Midfielders */}
       <div>
         <div className="text-white/70 text-xs font-semibold mb-1 text-center uppercase tracking-wide">
           Midfield
         </div>
         <div className="flex justify-around px-4">
-          {midfielders.map((player, index) => (
-            <PlayerCard
-              key={player.id}
-              player={player}
-              isSelected={selectedPlayerId === player.id}
-              onClick={() => handleCardClick(player.id)}
-              minutesAtPosition={getPlayerMinutes(player.id)}
-              positionLabel={midfieldLabels[index]}
-              rotationCount={getPlayerRotationCount(player.id)}
-              isAlerted={alertedPlayers.has(player.id)}
-            />
-          ))}
+          {midfielders.map((player, index) => {
+            const stagedStatus = getPlayerStagedStatus(player.id);
+            return (
+              <PlayerCard
+                key={player.id}
+                player={player}
+                isSelected={selectedPlayerId === player.id}
+                onClick={() => handleCardClick(player.id)}
+                minutesAtPosition={getPlayerMinutes(player.id)}
+                positionLabel={midfieldLabels[index]}
+                rotationCount={getPlayerRotationCount(player.id)}
+                isAlerted={alertedPlayers.has(player.id)}
+                isStaged={stagedStatus.isStaged}
+                stagedDirection={stagedStatus.direction}
+              />
+            );
+          })}
           {/* Fill empty spots */}
-          {Array.from({ length: 3 - midfielders.length }).map((_, i) => (
+          {Array.from({ length: formationConfig.MID - midfielders.length }).map((_, i) => (
             <div
               key={`mid-empty-${i}`}
               className="w-20 h-20 bg-white/20 rounded-xl border-2 border-dashed border-white/40"
@@ -129,18 +160,23 @@ export default function FieldFormation({
           Defense
         </div>
         <div className="flex justify-around px-4">
-          {defenders.map((player, index) => (
-            <PlayerCard
-              key={player.id}
-              player={player}
-              isSelected={selectedPlayerId === player.id}
-              onClick={() => handleCardClick(player.id)}
-              minutesAtPosition={getPlayerMinutes(player.id)}
-              positionLabel={defenseLabels[index]}
-              rotationCount={getPlayerRotationCount(player.id)}
-              isAlerted={alertedPlayers.has(player.id)}
-            />
-          ))}
+          {defenders.map((player, index) => {
+            const stagedStatus = getPlayerStagedStatus(player.id);
+            return (
+              <PlayerCard
+                key={player.id}
+                player={player}
+                isSelected={selectedPlayerId === player.id}
+                onClick={() => handleCardClick(player.id)}
+                minutesAtPosition={getPlayerMinutes(player.id)}
+                positionLabel={defenseLabels[index]}
+                rotationCount={getPlayerRotationCount(player.id)}
+                isAlerted={alertedPlayers.has(player.id)}
+                isStaged={stagedStatus.isStaged}
+                stagedDirection={stagedStatus.direction}
+              />
+            );
+          })}
           {/* Fill empty spots */}
           {Array.from({ length: 3 - defenders.length }).map((_, i) => (
             <div
@@ -158,15 +194,22 @@ export default function FieldFormation({
             Goalkeeper
           </div>
           {gk ? (
-            <PlayerCard
-              player={gk}
-              isSelected={selectedPlayerId === gk.id}
-              onClick={() => handleCardClick(gk.id)}
-              minutesAtPosition={getPlayerMinutes(gk.id)}
-              positionLabel="GK"
-              rotationCount={getPlayerRotationCount(gk.id)}
-              isAlerted={alertedPlayers.has(gk.id)}
-            />
+            (() => {
+              const stagedStatus = getPlayerStagedStatus(gk.id);
+              return (
+                <PlayerCard
+                  player={gk}
+                  isSelected={selectedPlayerId === gk.id}
+                  onClick={() => handleCardClick(gk.id)}
+                  minutesAtPosition={getPlayerMinutes(gk.id)}
+                  positionLabel="GK"
+                  rotationCount={getPlayerRotationCount(gk.id)}
+                  isAlerted={alertedPlayers.has(gk.id)}
+                  isStaged={stagedStatus.isStaged}
+                  stagedDirection={stagedStatus.direction}
+                />
+              );
+            })()
           ) : (
             <div className="w-20 h-20 bg-white/20 rounded-xl border-2 border-dashed border-white/40 flex items-center justify-center">
               <span className="text-white/50 text-xs">Empty</span>

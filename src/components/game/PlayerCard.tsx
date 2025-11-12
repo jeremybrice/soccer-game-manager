@@ -17,6 +17,8 @@ interface PlayerCardProps {
   benchTime?: number; // Time in minutes on bench (for bench variant)
   rotationCount?: number; // Number of position changes
   isAlerted?: boolean; // Whether player has triggered 15+ min alert
+  isStaged?: boolean; // Whether player is in a staged swap
+  stagedDirection?: 'toField' | 'toBench'; // Direction of staged swap
 }
 
 export default function PlayerCard({
@@ -29,6 +31,8 @@ export default function PlayerCard({
   benchTime = 0,
   rotationCount = 0,
   isAlerted = false,
+  isStaged = false,
+  stagedDirection,
 }: PlayerCardProps) {
   const baseClasses =
     'touch-target rounded-xl font-bold transform transition-all active:scale-95';
@@ -42,7 +46,9 @@ export default function PlayerCard({
   };
 
   const variantClasses =
-    variant === 'field'
+    isStaged
+      ? 'bg-orange-500 text-white border-4 border-orange-300 shadow-2xl' // Staged swap styling
+      : variant === 'field'
       ? isSelected
         ? 'bg-raiders-red text-white scale-110 shadow-2xl ring-4 ring-raiders-red-light'
         : `${getTimeBasedColor(minutesAtPosition)} shadow-lg hover:shadow-xl hover:scale-105 ${
@@ -56,11 +62,18 @@ export default function PlayerCard({
     <button
       onClick={onClick}
       className={`${baseClasses} ${variantClasses} w-20 h-20 flex flex-col items-center justify-center relative ${
-        isAlerted && variant === 'field' ? 'ring-4 ring-yellow-300 ring-offset-2 ring-offset-field' : ''
+        isAlerted && variant === 'field' && !isStaged ? 'ring-4 ring-yellow-300 ring-offset-2 ring-offset-field' : ''
       }`}
     >
+      {/* Staged swap indicator - top left corner */}
+      {isStaged && stagedDirection && (
+        <div className="absolute top-0.5 left-0.5 bg-white text-orange-500 text-base font-bold px-1 rounded-full">
+          {stagedDirection === 'toField' ? '→' : '←'}
+        </div>
+      )}
+
       {/* Rotation count badge - top right corner */}
-      {rotationCount > 0 && (
+      {rotationCount > 0 && !isStaged && (
         <div className="absolute top-0.5 right-0.5 bg-black/60 text-white text-[8px] font-bold px-1 py-0.5 rounded-full min-w-[16px] text-center">
           {rotationCount}×
         </div>

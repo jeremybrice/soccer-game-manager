@@ -11,8 +11,10 @@ import { formatTime } from '../../utils/stats';
 import type { GameSession, TimerState, PausePeriod } from '../../types';
 import FieldFormation from './FieldFormation';
 import BenchArea from './BenchArea';
-import PreGameSetup from './PreGameSetup';
+import FormationSetupView from './FormationSetupView';
 import PlayingTimeSummary from './PlayingTimeSummary';
+import PlanningModeToggle from './PlanningModeToggle';
+import StagedSwapsPanel from './StagedSwapsPanel';
 
 // ============================================================================
 // Helper Functions (Outside Component to Prevent Recreat ion)
@@ -170,6 +172,14 @@ export default function GameView() {
     pauseTimer,
     endGame,
     navigateTo,
+    planningMode,
+    stagedSwaps,
+    togglePlanningMode,
+    stageSwap,
+    unstageSwap,
+    clearStagedSwaps,
+    executeStagedSwaps,
+    swapPlayers,
   } = useAppStore();
 
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
@@ -248,9 +258,9 @@ export default function GameView() {
     });
   }, [timer.elapsedSeconds, currentGame?.rotations.length, playerZoneMinutes, currentAssignments, players, alertedPlayers]);
 
-  // If no game, show pre-game setup
+  // If no game, show formation setup
   if (!currentGame) {
-    return <PreGameSetup />;
+    return <FormationSetupView />;
   }
 
   const handleEndGame = async () => {
@@ -263,11 +273,38 @@ export default function GameView() {
     }
   };
 
-  const handlePlayerSelect = (playerId: string) => {
-    if (selectedPlayerId === playerId) {
-      setSelectedPlayerId(null); // Deselect
+  const handlePlayerSelect = async (playerId: string) => {
+    // In planning mode, stage swaps instead of executing them immediately
+    if (planningMode) {
+      if (selectedPlayerId && selectedPlayerId !== playerId) {
+        // Determine which is bench and which is field
+        const player1Pos = currentAssignments[selectedPlayerId];
+        const player2Pos = currentAssignments[playerId];
+
+        // Only allow bench ↔ field swaps in planning mode
+        if (player1Pos === 'BENCH' && player2Pos !== 'BENCH') {
+          stageSwap(selectedPlayerId, playerId);
+          setSelectedPlayerId(null);
+        } else if (player2Pos === 'BENCH' && player1Pos !== 'BENCH') {
+          stageSwap(playerId, selectedPlayerId);
+          setSelectedPlayerId(null);
+        } else {
+          // Both on field or both on bench - not allowed in planning mode
+          alert('In planning mode, you can only stage bench ↔ field swaps');
+          setSelectedPlayerId(null);
+        }
+      } else {
+        // Select player
+        setSelectedPlayerId(playerId);
+      }
     } else {
-      setSelectedPlayerId(playerId);
+      // Normal mode: immediate swap
+      if (selectedPlayerId && selectedPlayerId !== playerId) {
+        await swapPlayers(selectedPlayerId, playerId);
+        setSelectedPlayerId(null);
+      } else {
+        setSelectedPlayerId(playerId);
+      }
     }
   };
 
@@ -303,6 +340,24 @@ export default function GameView() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Field Formation */}
         <div className="flex-1 bg-gradient-to-b from-field-light to-field p-4 overflow-y-auto">
+          {/* Planning Mode Toggle */}
+          <PlanningModeToggle
+            planningMode={planningMode}
+            onToggle={togglePlanningMode}
+            stagedSwapCount={stagedSwaps.length}
+          />
+
+          {/* Staged Swaps Panel */}
+          {planningMode && (
+            <StagedSwapsPanel
+              stagedSwaps={stagedSwaps}
+              players={players}
+              onExecuteAll={executeStagedSwaps}
+              onClearAll={clearStagedSwaps}
+              onRemoveSwap={unstageSwap}
+            />
+          )}
+
           {/* Color Legend */}
           <div className="flex justify-center items-center space-x-3 mb-3 bg-black/20 backdrop-blur-sm rounded-lg py-2 px-3">
             <div className="flex items-center space-x-1">
@@ -338,12 +393,18 @@ export default function GameView() {
             getPlayerMinutes={(id) => playerZoneMinutes[id] || 0}
             getPlayerRotationCount={(id) => playerRotationCounts[id] || 0}
             alertedPlayers={alertedPlayers}
+            stagedSwaps={stagedSwaps}
           />
 
           {/* Selection Help - Positioned above bench */}
           {selectedPlayerId && (
-            <div className="mt-4 bg-raiders-red text-white px-6 py-3 rounded-xl shadow-lg text-center font-semibold">
-              Tap another player to swap positions
+            <div className={`mt-4 text-white px-6 py-3 rounded-xl shadow-lg text-center font-semibold ${
+              planningMode ? 'bg-orange-500' : 'bg-raiders-red'
+            }`}>
+              {planningMode
+                ? 'Tap another player to stage a swap (bench ↔ field only)'
+                : 'Tap another player to swap positions'
+              }
             </div>
           )}
         </div>
@@ -359,6 +420,7 @@ export default function GameView() {
             getPlayerBenchTime={getPlayerBenchTime}
             getPlayerRotationCount={(id) => playerRotationCounts[id] || 0}
             alertedPlayers={alertedPlayers}
+            stagedSwaps={stagedSwaps}
           />
         </div>
       </div>
