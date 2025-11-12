@@ -227,7 +227,6 @@ interface PositionSlotProps {
 }
 
 function PositionSlot({
-  position,
   label,
   player,
   isSelected,
