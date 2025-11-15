@@ -449,10 +449,20 @@ export const useAppStore = create<AppState>()((set, get) => ({
   startGame: async (initialAssignments) => {
     try {
       const game = await db.startNewGame(initialAssignments);
+      const now = new Date();
+
       set({
         currentGame: game,
         currentAssignments: initialAssignments,
         currentView: 'game',
+        timer: {
+          isRunning: false,
+          elapsedSeconds: 0,
+          totalPausedDuration: 0,
+          pausePeriods: [],
+          pausedAt: now,  // Initialize in paused state
+          startedAt: undefined,  // Game hasn't started yet
+        }
       });
       // Timer starts in paused state - coach must manually start it
     } catch (error) {

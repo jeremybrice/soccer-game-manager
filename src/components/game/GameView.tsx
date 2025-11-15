@@ -58,6 +58,9 @@ const calculatePlayerMinutesInCurrentZone = (
 ): number => {
   if (!currentGame || currentGame.rotations.length === 0) return 0;
 
+  // If timer was never started, return 0 (game hasn't begun)
+  if (!timer.startedAt && !timer.pausedAt) return 0;
+
   const rotations = currentGame.rotations;
   const currentRotation = rotations[rotations.length - 1];
   const currentPosition = currentRotation.assignments[playerId];
@@ -101,6 +104,9 @@ const calculatePlayerTotalFieldTime = (
   timer: TimerState
 ): number => {
   if (!currentGame || currentGame.rotations.length === 0) return 0;
+
+  // If timer was never started, return 0 (game hasn't begun)
+  if (!timer.startedAt && !timer.pausedAt) return 0;
 
   const rotations = currentGame.rotations;
   let totalMinutes = 0;
