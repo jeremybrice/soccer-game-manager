@@ -31,7 +31,7 @@ export default function FieldFormation({
   alertedPlayers,
   stagedSwaps = [],
 }: FieldFormationProps) {
-  const { swapPlayers, selectedFormation } = useAppStore();
+  const { selectedFormation } = useAppStore();
 
   // Get current formation configuration
   const formationConfig = selectedFormation === 'A' ? FORMATION_A : FORMATION_B;
@@ -69,15 +69,10 @@ export default function FieldFormation({
 
   const defenseLabels = ['LD', 'CD', 'RD']; // Always 3 defenders
 
-  const handleCardClick = async (playerId: string) => {
-    if (selectedPlayerId && selectedPlayerId !== playerId) {
-      // Swap the two players
-      await swapPlayers(selectedPlayerId, playerId);
-      onPlayerSelect(''); // Deselect
-    } else {
-      // Select/deselect
-      onPlayerSelect(playerId);
-    }
+  const handleCardClick = (playerId: string) => {
+    // Always delegate to parent's onPlayerSelect handler
+    // GameView will handle selection, swapping, and deselection logic
+    onPlayerSelect(playerId);
   };
 
   return (
