@@ -39,9 +39,8 @@ export default function PlayerCard({
 
   // Get time-based color (only for field players)
   const getTimeBasedColor = (minutes: number): string => {
-    if (minutes < 5) return 'bg-green-500 text-white';
-    if (minutes < 10) return 'bg-yellow-400 text-gray-900';
-    if (minutes < 15) return 'bg-orange-500 text-white';
+    if (minutes < 10) return 'bg-green-500 text-white';
+    if (minutes < 15) return 'bg-yellow-400 text-gray-900';
     return 'bg-red-500 text-white';
   };
 

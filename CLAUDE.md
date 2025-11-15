@@ -6,7 +6,7 @@ Youth soccer coaching PWA for the **St. Pete Raiders U10 Boys Jordan** team. Man
 
 **Core Philosophy**: "Glanceable. One-handed operation. No thinking required."
 
-**Current Version**: v2.2.0 (stored in `package.json:4` and `HomeView.tsx:105`)
+**Current Version**: v2.4.0 (stored in `package.json:4` and `HomeView.tsx:105`)
 
 ---
 
@@ -42,7 +42,7 @@ Youth soccer coaching PWA for the **St. Pete Raiders U10 Boys Jordan** team. Man
 - PWA manifest: Navy theme/background colors
 
 **NOT Changed**:
-- Time-based player colors (green/yellow/orange/red) - kept for safety/visibility
+- Time-based player colors (green/yellow/red) - kept for safety/visibility
 - Bench background - kept gray for neutral zone indication
 
 **Files Modified**:
@@ -83,7 +83,7 @@ Game pause affects all timers. Store tracks:
 
 ### Time-Based Colors
 
-Field/bench players show color-coded time: <5m (Green), 5-10m (Yellow), 10-15m (Orange), >15m (Red)
+Field/bench players show color-coded time: <10m (Green), 10-15m (Yellow), >15m (Red)
 
 ### Position Labels
 
@@ -332,5 +332,9 @@ Minute-level only (sufficient for youth soccer). Updates on component re-renders
 - v2.0.0: Raiders branding - navy/red colors, team logo, updated PWA manifest
 - v2.1.0: Help system - searchable documentation, 9 help sections, markdown rendering, user preferences database
 - v2.2.0: Version bump for help system release
+- v2.3.0: Planning mode - staged swaps, batch rotations
+- v2.3.1: Bug fixes - player swap improvements
+- v2.3.2: Bug fixes - prevent player disappearing during swaps
+- v2.4.0: Simplified time-based colors - reduced from 4 to 3 tiers (green <10m, yellow 10-15m, red >15m)
 
-*Last updated: 2025-11-10 (v2.2.0)*
+*Last updated: 2025-11-15 (v2.4.0)*
