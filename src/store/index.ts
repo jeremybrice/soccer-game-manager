@@ -532,13 +532,60 @@ export const useAppStore = create<AppState>()((set, get) => ({
       const pos1 = currentAssignments[playerId1];
       const pos2 = currentAssignments[playerId2];
 
-      // Get all players at each position BEFORE swap, preserving current order
+      // Helper to get all players at a position in current order
       const getPlayersAtPosition = (position: Position): string[] => {
         return Object.entries(currentAssignments)
           .filter(([, pos]) => pos === position)
           .map(([id]) => id);
       };
 
+      // CASE 1: Same position swap (e.g., both in MID, both on BENCH)
+      // Must handle separately to avoid duplicate player bug
+      if (pos1 === pos2) {
+        const playersAtPosition = getPlayersAtPosition(pos1);
+        const slot1 = playersAtPosition.indexOf(playerId1);
+        const slot2 = playersAtPosition.indexOf(playerId2);
+
+        // Swap within the same array
+        const newPlayersAtPosition = [...playersAtPosition];
+        newPlayersAtPosition[slot1] = playerId2;
+        newPlayersAtPosition[slot2] = playerId1;
+
+        // Rebuild assignments for all positions
+        const newAssignments: PositionAssignments = {};
+        const positionOrder: Position[] = ['GK', 'DEF', 'MID', 'FWD', 'BENCH'];
+
+        positionOrder.forEach((position) => {
+          const orderedPlayerIds = position === pos1
+            ? newPlayersAtPosition
+            : getPlayersAtPosition(position);
+
+          orderedPlayerIds.forEach((playerId) => {
+            newAssignments[playerId] = position;
+          });
+        });
+
+        // Save and update state
+        await db.addRotation(currentGame.id, newAssignments);
+
+        const newRotation = {
+          id: crypto.randomUUID(),
+          timestamp: new Date(),
+          assignments: newAssignments,
+        };
+
+        set({
+          currentAssignments: newAssignments,
+          currentGame: {
+            ...currentGame,
+            rotations: [...currentGame.rotations, newRotation],
+          },
+        });
+
+        return;
+      }
+
+      // CASE 2: Different position swap (e.g., BENCH ↔ MID)
       const playersAtPos1 = getPlayersAtPosition(pos1);
       const playersAtPos2 = getPlayersAtPosition(pos2);
 
@@ -555,7 +602,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
       newPlayersAtPos2[slot2] = playerId1;
 
       // Rebuild assignments maintaining slot order for all positions
-      // Process positions in order: GK, DEF, MID, FWD, BENCH
       const newAssignments: PositionAssignments = {};
       const positionOrder: Position[] = ['GK', 'DEF', 'MID', 'FWD', 'BENCH'];
 
