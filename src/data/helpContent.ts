@@ -35,9 +35,8 @@ export const helpSections: HelpSection[] = [
    - Timer resets when crossing field ↔ bench
 
 4. **Monitor Time**
-   - Green: <5 min (fresh)
-   - Yellow: 5-10 min
-   - Orange: 10-15 min
+   - Green: <10 min (fresh)
+   - Yellow: 10-15 min
    - Red: >15 min (rotate soon!)
 
 5. **End Game**
@@ -82,9 +81,8 @@ Youth soccer focuses on fair **field time**, not position-specific time. Moving 
 
 | Color | Time Range | Action |
 |-------|------------|--------|
-| 🟢 Green | < 5 minutes | Fresh, no rush |
-| 🟡 Yellow | 5-10 minutes | Monitor |
-| 🟠 Orange | 10-15 minutes | Plan rotation |
+| 🟢 Green | < 10 minutes | Fresh, no rush |
+| 🟡 Yellow | 10-15 minutes | Plan rotation |
 | 🔴 Red | > 15 minutes | Rotate ASAP |
 
 ## Pause Button

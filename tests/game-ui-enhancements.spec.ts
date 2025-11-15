@@ -62,13 +62,12 @@ test.describe('Game Screen UI Enhancements', () => {
     }
 
     // Verify color legend is visible
-    const legendVisible = await page.locator('text=<5m').isVisible();
+    const legendVisible = await page.locator('text=<10m').isVisible();
     console.log('Color legend visible:', legendVisible);
     expect(legendVisible).toBe(true);
 
-    // Check all legend items
-    await expect(page.locator('text=<5m')).toBeVisible();
-    await expect(page.locator('text=5-10m')).toBeVisible();
+    // Check all legend items (3-color system)
+    await expect(page.locator('text=<10m')).toBeVisible();
     await expect(page.locator('text=10-15m')).toBeVisible();
     await expect(page.locator('text=>15m')).toBeVisible();
 
@@ -240,7 +239,7 @@ test.describe('Game Screen UI Enhancements', () => {
 
       // Comprehensive checks
       const checks = {
-        colorLegend: await page.locator('text=<5m').isVisible(),
+        colorLegend: await page.locator('text=<10m').isVisible(),
         forwardLabel: await page.locator('text=Forward').isVisible(),
         midfieldLabel: await page.locator('text=Midfield').isVisible(),
         defenseLabel: await page.locator('text=Defense').isVisible(),

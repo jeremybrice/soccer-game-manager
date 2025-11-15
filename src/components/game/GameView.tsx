@@ -362,14 +362,10 @@ export default function GameView() {
           <div className="flex justify-center items-center space-x-3 mb-3 bg-black/20 backdrop-blur-sm rounded-lg py-2 px-3">
             <div className="flex items-center space-x-1">
               <div className="w-3 h-3 rounded-full bg-green-500"></div>
-              <span className="text-white/90 text-xs font-medium">&lt;5m</span>
+              <span className="text-white/90 text-xs font-medium">&lt;10m</span>
             </div>
             <div className="flex items-center space-x-1">
               <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-              <span className="text-white/90 text-xs font-medium">5-10m</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 rounded-full bg-orange-500"></div>
               <span className="text-white/90 text-xs font-medium">10-15m</span>
             </div>
             <div className="flex items-center space-x-1">

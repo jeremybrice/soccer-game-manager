@@ -102,7 +102,7 @@ export default function HomeView() {
 
       {/* Footer */}
       <div className="mt-12 text-white/60 text-sm text-center">
-        <p className="text-white/40 text-xs mt-1">v2.3.2 · St. Pete Raiders Edition</p>
+        <p className="text-white/40 text-xs mt-1">v2.4.0 · St. Pete Raiders Edition</p>
       </div>
     </div>
   );
