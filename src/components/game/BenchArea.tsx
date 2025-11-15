@@ -5,7 +5,6 @@
  */
 
 import type { Player, PositionAssignments, StagedSwap } from '../../types';
-import { useAppStore } from '../../store';
 import PlayerCard from './PlayerCard';
 
 interface BenchAreaProps {
@@ -31,7 +30,7 @@ export default function BenchArea({
   alertedPlayers,
   stagedSwaps = [],
 }: BenchAreaProps) {
-  const { swapPlayers } = useAppStore();
+  // Note: No longer need swapPlayers from store, parent handles it
 
   // Get players on bench
   const benchPlayers = Object.entries(assignments)
@@ -48,15 +47,10 @@ export default function BenchArea({
     return { isStaged: false };
   };
 
-  const handleCardClick = async (playerId: string) => {
-    if (selectedPlayerId && selectedPlayerId !== playerId) {
-      // Swap the two players
-      await swapPlayers(selectedPlayerId, playerId);
-      onPlayerSelect(''); // Deselect
-    } else {
-      // Select/deselect
-      onPlayerSelect(playerId);
-    }
+  const handleCardClick = (playerId: string) => {
+    // Always delegate to parent's onPlayerSelect handler
+    // GameView will handle selection, swapping, and deselection logic
+    onPlayerSelect(playerId);
   };
 
   return (
