@@ -6,7 +6,7 @@ Youth soccer coaching PWA for the **St. Pete Raiders U10 Boys Jordan** team. Man
 
 **Core Philosophy**: "Glanceable. One-handed operation. No thinking required."
 
-**Current Version**: v2.4.0 (stored in `package.json:4` and `HomeView.tsx:105`)
+**Current Version**: v2.4.1 (stored in `package.json:4` and `HomeView.tsx:105`)
 
 ---
 
@@ -336,5 +336,6 @@ Minute-level only (sufficient for youth soccer). Updates on component re-renders
 - v2.3.1: Bug fixes - player swap improvements
 - v2.3.2: Bug fixes - prevent player disappearing during swaps
 - v2.4.0: Simplified time-based colors - reduced from 4 to 3 tiers (green <10m, yellow 10-15m, red >15m)
+- v2.4.1: Bug fixes - synchronize game clock and player timers at game start
 
-*Last updated: 2025-11-15 (v2.4.0)*
+*Last updated: 2025-11-15 (v2.4.1)*
