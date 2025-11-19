@@ -449,7 +449,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
   startGame: async (initialAssignments) => {
     try {
       const game = await db.startNewGame(initialAssignments);
-      const now = new Date();
 
       set({
         currentGame: game,
