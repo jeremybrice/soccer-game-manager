@@ -460,8 +460,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
           elapsedSeconds: 0,
           totalPausedDuration: 0,
           pausePeriods: [],
-          pausedAt: now,  // Initialize in paused state
-          startedAt: undefined,  // Game hasn't started yet
+          pausedAt: undefined,
+          startedAt: undefined,
         }
       });
       // Timer starts in paused state - coach must manually start it
