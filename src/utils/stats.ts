@@ -8,22 +8,57 @@
 import type {
   Player,
   GameSession,
-  Rotation,
   Position,
   PlayerStats,
   FairnessMetrics,
+  PausePeriod,
 } from '../types';
 
 /**
- * Calculate minutes played for each position assignment between two rotations
+ * Calculate how much time in a given segment overlaps with pause periods
  */
-function getMinutesBetweenRotations(rotation1: Rotation, rotation2: Rotation): number {
-  const ms = rotation2.timestamp.getTime() - rotation1.timestamp.getTime();
-  return ms / 1000 / 60; // Convert to minutes
+function calculatePauseOverlap(
+  segmentStart: number,
+  segmentEnd: number,
+  pausePeriods: PausePeriod[]
+): number {
+  let totalOverlap = 0;
+
+  for (const period of pausePeriods) {
+    const pauseStart = period.pausedAt.getTime();
+    const pauseEnd = period.resumedAt
+      ? period.resumedAt.getTime()
+      : Date.now();
+
+    // Calculate overlap using min/max logic
+    const overlapStart = Math.max(segmentStart, pauseStart);
+    const overlapEnd = Math.min(segmentEnd, pauseEnd);
+    const overlap = Math.max(0, overlapEnd - overlapStart);
+
+    totalOverlap += overlap;
+  }
+
+  return totalOverlap;
+}
+
+/**
+ * Calculate minutes played for each position assignment between two rotations
+ * Accounts for pause periods by subtracting overlapping pause time
+ */
+function getMinutesBetweenRotations(
+  startTime: number,
+  endTime: number,
+  pausePeriods: PausePeriod[]
+): number {
+  const rawMs = endTime - startTime;
+  const pauseMs = calculatePauseOverlap(startTime, endTime, pausePeriods);
+  const actualMs = rawMs - pauseMs;
+  return Math.max(0, actualMs / 1000 / 60); // Convert to minutes
 }
 
 /**
  * Calculate player statistics from a single game
+ * Accounts for pause periods and timer start time
  */
 export function calculateGameStats(
   game: GameSession,
@@ -48,11 +83,24 @@ export function calculateGameStats(
     });
   });
 
+  // Get pause periods and timer start time from game
+  const pausePeriods = game.timerPausePeriods || [];
+  const gameStartTime = game.timerStartedAt?.getTime() || 0;
+
   // Calculate time in each position
   for (let i = 0; i < game.rotations.length - 1; i++) {
     const currentRotation = game.rotations[i];
     const nextRotation = game.rotations[i + 1];
-    const minutes = getMinutesBetweenRotations(currentRotation, nextRotation);
+
+    // Clamp start time to timer start to exclude pre-game setup time
+    const rotationStart = currentRotation.timestamp.getTime();
+    const startTime = Math.max(rotationStart, gameStartTime);
+    const endTime = nextRotation.timestamp.getTime();
+
+    // Skip if this segment is entirely before game started
+    if (endTime <= gameStartTime) continue;
+
+    const minutes = getMinutesBetweenRotations(startTime, endTime, pausePeriods);
 
     // Add minutes to each player's position
     Object.entries(currentRotation.assignments).forEach(([playerId, position]) => {
@@ -69,18 +117,28 @@ export function calculateGameStats(
   // Handle last rotation to current time (if game is active)
   if (game.isActive && game.rotations.length > 0) {
     const lastRotation = game.rotations[game.rotations.length - 1];
-    const now = new Date();
-    const minutes = (now.getTime() - lastRotation.timestamp.getTime()) / 1000 / 60;
 
-    Object.entries(lastRotation.assignments).forEach(([playerId, position]) => {
-      const stats = playerStatsMap.get(playerId);
-      if (stats) {
-        stats.minutesByPosition[position] += minutes;
-        if (position !== 'BENCH') {
-          stats.totalMinutes += minutes;
+    // Use paused time if game is paused, otherwise current time
+    const now = game.timerPausedAt ? game.timerPausedAt.getTime() : Date.now();
+
+    // Clamp start time to timer start
+    const rotationStart = lastRotation.timestamp.getTime();
+    const startTime = Math.max(rotationStart, gameStartTime);
+
+    // Skip if this segment is entirely before game started
+    if (now > gameStartTime) {
+      const minutes = getMinutesBetweenRotations(startTime, now, pausePeriods);
+
+      Object.entries(lastRotation.assignments).forEach(([playerId, position]) => {
+        const stats = playerStatsMap.get(playerId);
+        if (stats) {
+          stats.minutesByPosition[position] += minutes;
+          if (position !== 'BENCH') {
+            stats.totalMinutes += minutes;
+          }
         }
-      }
-    });
+      });
+    }
   }
 
   return Array.from(playerStatsMap.values());
