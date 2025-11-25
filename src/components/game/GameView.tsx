@@ -87,9 +87,17 @@ const calculatePlayerMinutesInCurrentZone = (
     startTime = rotations[i].timestamp.getTime();
   }
 
+  // Clamp startTime to timer start to exclude pre-game setup time
+  const effectiveStartTime = timer.startedAt
+    ? Math.max(startTime, timer.startedAt.getTime())
+    : startTime;
+
   // Calculate elapsed time accounting for pauses
   const now = timer.pausedAt ? timer.pausedAt.getTime() : Date.now();
-  const elapsedMs = now - startTime - timer.totalPausedDuration;
+
+  // Only subtract pause time that occurred during this zone segment
+  const pauseOverlap = calculatePauseOverlap(effectiveStartTime, now, timer.pausePeriods || []);
+  const elapsedMs = now - effectiveStartTime - pauseOverlap;
 
   return Math.max(0, Math.floor(elapsedMs / 60000));
 };
@@ -111,14 +119,23 @@ const calculatePlayerTotalFieldTime = (
   const rotations = currentGame.rotations;
   let totalMinutes = 0;
 
+  // Get effective game start time (timer.startedAt)
+  const gameStartTime = timer.startedAt?.getTime() || 0;
+
   for (let i = 0; i < rotations.length; i++) {
     const position = rotations[i].assignments[playerId];
-    const startTime = rotations[i].timestamp.getTime();
+    const rotationStartTime = rotations[i].timestamp.getTime();
+
+    // Clamp startTime to timer start to exclude pre-game setup time
+    const startTime = Math.max(rotationStartTime, gameStartTime);
 
     const endTime =
       i < rotations.length - 1
         ? rotations[i + 1].timestamp.getTime()
-        : Date.now();
+        : (timer.pausedAt ? timer.pausedAt.getTime() : Date.now());
+
+    // Skip if this segment is entirely before game started
+    if (endTime <= gameStartTime) continue;
 
     // Only count if on field (not bench)
     if (position !== 'BENCH') {
