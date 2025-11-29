@@ -16,7 +16,6 @@ interface FieldFormationProps {
   selectedPlayerId: string | null;
   onPlayerSelect: (playerId: string) => void;
   getPlayerMinutes: (playerId: string) => number;
-  getPlayerRotationCount: (playerId: string) => number;
   alertedPlayers: Set<string>;
   stagedSwaps?: StagedSwap[];
 }
@@ -27,7 +26,6 @@ export default function FieldFormation({
   selectedPlayerId,
   onPlayerSelect,
   getPlayerMinutes,
-  getPlayerRotationCount,
   alertedPlayers,
   stagedSwaps = [],
 }: FieldFormationProps) {
@@ -99,7 +97,6 @@ export default function FieldFormation({
                 onClick={() => handleCardClick(player.id)}
                 minutesAtPosition={getPlayerMinutes(player.id)}
                 positionLabel={forwardLabels[index]}
-                rotationCount={getPlayerRotationCount(player.id)}
                 isAlerted={alertedPlayers.has(player.id)}
                 isStaged={stagedStatus.isStaged}
                 stagedDirection={stagedStatus.direction}
@@ -132,7 +129,6 @@ export default function FieldFormation({
                 onClick={() => handleCardClick(player.id)}
                 minutesAtPosition={getPlayerMinutes(player.id)}
                 positionLabel={midfieldLabels[index]}
-                rotationCount={getPlayerRotationCount(player.id)}
                 isAlerted={alertedPlayers.has(player.id)}
                 isStaged={stagedStatus.isStaged}
                 stagedDirection={stagedStatus.direction}
@@ -165,7 +161,6 @@ export default function FieldFormation({
                 onClick={() => handleCardClick(player.id)}
                 minutesAtPosition={getPlayerMinutes(player.id)}
                 positionLabel={defenseLabels[index]}
-                rotationCount={getPlayerRotationCount(player.id)}
                 isAlerted={alertedPlayers.has(player.id)}
                 isStaged={stagedStatus.isStaged}
                 stagedDirection={stagedStatus.direction}
@@ -198,7 +193,6 @@ export default function FieldFormation({
                   onClick={() => handleCardClick(gk.id)}
                   minutesAtPosition={getPlayerMinutes(gk.id)}
                   positionLabel="GK"
-                  rotationCount={getPlayerRotationCount(gk.id)}
                   isAlerted={alertedPlayers.has(gk.id)}
                   isStaged={stagedStatus.isStaged}
                   stagedDirection={stagedStatus.direction}

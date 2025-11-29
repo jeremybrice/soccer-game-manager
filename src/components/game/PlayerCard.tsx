@@ -15,7 +15,6 @@ interface PlayerCardProps {
   minutesAtPosition?: number; // Time in minutes at current position
   positionLabel?: string; // Specific position label (e.g., "LM", "CD", "RF")
   benchTime?: number; // Time in minutes on bench (for bench variant)
-  rotationCount?: number; // Number of position changes
   isAlerted?: boolean; // Whether player has triggered 15+ min alert
   isStaged?: boolean; // Whether player is in a staged swap
   stagedDirection?: 'toField' | 'toBench'; // Direction of staged swap
@@ -29,7 +28,6 @@ export default function PlayerCard({
   minutesAtPosition = 0,
   positionLabel,
   benchTime = 0,
-  rotationCount = 0,
   isAlerted = false,
   isStaged = false,
   stagedDirection,
@@ -68,13 +66,6 @@ export default function PlayerCard({
       {isStaged && stagedDirection && (
         <div className="absolute top-0.5 left-0.5 bg-white text-orange-500 text-base font-bold px-1 rounded-full">
           {stagedDirection === 'toField' ? '→' : '←'}
-        </div>
-      )}
-
-      {/* Rotation count badge - top right corner */}
-      {rotationCount > 0 && !isStaged && (
-        <div className="absolute top-0.5 right-0.5 bg-black/60 text-white text-[8px] font-bold px-1 py-0.5 rounded-full min-w-[16px] text-center">
-          {rotationCount}×
         </div>
       )}
 
