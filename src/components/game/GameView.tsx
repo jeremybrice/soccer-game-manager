@@ -10,9 +10,7 @@ import { useAppStore } from '../../store';
 import { formatTime } from '../../utils/stats';
 import type { GameSession, TimerState, PausePeriod } from '../../types';
 import FieldFormation from './FieldFormation';
-import BenchArea from './BenchArea';
 import FormationSetupView from './FormationSetupView';
-import PlanningModeToggle from './PlanningModeToggle';
 import StagedSwapsPanel from './StagedSwapsPanel';
 import SwapModal from './SwapModal';
 
@@ -134,15 +132,6 @@ export default function GameView() {
     });
     return cache;
   }, [currentGame?.rotations.length, timer.pausedAt, timer.totalPausedDuration, timer.elapsedSeconds, players]);
-
-  // Helper function for bench time (wrapper around zone minutes)
-  const getPlayerBenchTime = (playerId: string): number => {
-    if (!currentGame || currentGame.rotations.length === 0) return 0;
-    const currentRotation = currentGame.rotations[currentGame.rotations.length - 1];
-    const currentPosition = currentRotation.assignments[playerId];
-    if (currentPosition !== 'BENCH') return 0;
-    return playerZoneMinutes[playerId] || 0;
-  };
 
   // Monitor field players and alert when they hit 15 minutes
   useEffect(() => {
@@ -275,13 +264,6 @@ export default function GameView() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Field Formation */}
         <div className="flex-1 bg-gradient-to-b from-field-light to-field p-4 overflow-y-auto">
-          {/* Planning Mode Toggle */}
-          <PlanningModeToggle
-            planningMode={planningMode}
-            onToggle={togglePlanningMode}
-            stagedSwapCount={stagedSwaps.length}
-          />
-
           {/* Staged Swaps Panel */}
           {planningMode && (
             <StagedSwapsPanel
@@ -318,31 +300,25 @@ export default function GameView() {
             alertedPlayers={alertedPlayers}
             stagedSwaps={stagedSwaps}
           />
-
-        </div>
-
-        {/* Bench */}
-        <div className="bg-bench-dark border-t-4 border-white/30">
-          <BenchArea
-            assignments={currentAssignments}
-            players={players}
-            selectedPlayerId={selectedPlayerId}
-            onPlayerSelect={handlePlayerSelect}
-            getPlayerMinutes={(id) => playerZoneMinutes[id] || 0}
-            getPlayerBenchTime={getPlayerBenchTime}
-            alertedPlayers={alertedPlayers}
-            stagedSwaps={stagedSwaps}
-          />
         </div>
       </div>
 
       {/* Bottom Actions */}
       <div className="bg-white border-t-2 border-gray-200 px-4 py-3 flex space-x-2">
         <button
-          onClick={() => navigateTo('stats')}
-          className="flex-1 touch-target bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 rounded-xl"
+          onClick={togglePlanningMode}
+          className={`flex-1 touch-target font-bold py-3 rounded-xl relative ${
+            planningMode
+              ? 'bg-orange-500 hover:bg-orange-600 text-white'
+              : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+          }`}
         >
-          📊 Stats
+          {planningMode ? '🎯 Planning' : '⚡ Live'}
+          {stagedSwaps.length > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+              {stagedSwaps.length}
+            </span>
+          )}
         </button>
         <button
           onClick={handleEndGame}
