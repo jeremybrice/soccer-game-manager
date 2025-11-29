@@ -14,7 +14,6 @@ interface BenchAreaProps {
   onPlayerSelect: (playerId: string) => void;
   getPlayerMinutes: (playerId: string) => number;
   getPlayerBenchTime: (playerId: string) => number;
-  getPlayerRotationCount: (playerId: string) => number;
   alertedPlayers: Set<string>;
   stagedSwaps?: StagedSwap[];
 }
@@ -26,7 +25,6 @@ export default function BenchArea({
   onPlayerSelect,
   getPlayerMinutes,
   getPlayerBenchTime,
-  getPlayerRotationCount,
   alertedPlayers,
   stagedSwaps = [],
 }: BenchAreaProps) {
@@ -75,7 +73,6 @@ export default function BenchArea({
                   variant="bench"
                   minutesAtPosition={getPlayerMinutes(player.id)}
                   benchTime={getPlayerBenchTime(player.id)}
-                  rotationCount={getPlayerRotationCount(player.id)}
                   isAlerted={alertedPlayers.has(player.id)}
                   isStaged={stagedStatus.isStaged}
                   stagedDirection={stagedStatus.direction}

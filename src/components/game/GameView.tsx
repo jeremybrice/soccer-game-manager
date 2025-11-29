@@ -12,7 +12,6 @@ import type { GameSession, TimerState, PausePeriod } from '../../types';
 import FieldFormation from './FieldFormation';
 import BenchArea from './BenchArea';
 import FormationSetupView from './FormationSetupView';
-import PlayingTimeSummary from './PlayingTimeSummary';
 import PlanningModeToggle from './PlanningModeToggle';
 import StagedSwapsPanel from './StagedSwapsPanel';
 
@@ -102,89 +101,6 @@ const calculatePlayerMinutesInCurrentZone = (
   return Math.max(0, Math.floor(elapsedMs / 60000));
 };
 
-/**
- * Calculate total field time for a player across all rotations
- * Pause-aware version - subtracts pause overlap from each segment
- */
-const calculatePlayerTotalFieldTime = (
-  playerId: string,
-  currentGame: GameSession | null,
-  timer: TimerState
-): number => {
-  if (!currentGame || currentGame.rotations.length === 0) return 0;
-
-  // If timer was never started, return 0 (game hasn't begun)
-  if (!timer.startedAt && !timer.pausedAt) return 0;
-
-  const rotations = currentGame.rotations;
-  let totalMinutes = 0;
-
-  // Get effective game start time (timer.startedAt)
-  const gameStartTime = timer.startedAt?.getTime() || 0;
-
-  for (let i = 0; i < rotations.length; i++) {
-    const position = rotations[i].assignments[playerId];
-    const rotationStartTime = rotations[i].timestamp.getTime();
-
-    // Clamp startTime to timer start to exclude pre-game setup time
-    const startTime = Math.max(rotationStartTime, gameStartTime);
-
-    const endTime =
-      i < rotations.length - 1
-        ? rotations[i + 1].timestamp.getTime()
-        : (timer.pausedAt ? timer.pausedAt.getTime() : Date.now());
-
-    // Skip if this segment is entirely before game started
-    if (endTime <= gameStartTime) continue;
-
-    // Only count if on field (not bench)
-    if (position !== 'BENCH') {
-      const durationMs = endTime - startTime;
-
-      // Subtract pause periods that overlapped with this segment
-      const pauseOverlapMs = calculatePauseOverlap(
-        startTime,
-        endTime,
-        timer.pausePeriods || []
-      );
-
-      const actualPlayingTimeMs = durationMs - pauseOverlapMs;
-      totalMinutes += Math.floor(actualPlayingTimeMs / 60000);
-    }
-  }
-
-  return totalMinutes;
-};
-
-/**
- * Count field ↔ bench transitions
- */
-const calculatePlayerRotationCount = (
-  playerId: string,
-  currentGame: GameSession | null
-): number => {
-  if (!currentGame || currentGame.rotations.length <= 1) return 0;
-
-  const rotations = currentGame.rotations;
-  let rotationCount = 0;
-
-  for (let i = 1; i < rotations.length; i++) {
-    const prevPosition = rotations[i - 1].assignments[playerId];
-    const currentPosition = rotations[i].assignments[playerId];
-
-    if (!prevPosition || !currentPosition) continue;
-
-    const wasOnField = prevPosition !== 'BENCH';
-    const isOnField = currentPosition !== 'BENCH';
-
-    if (wasOnField !== isOnField) {
-      rotationCount++;
-    }
-  }
-
-  return rotationCount;
-};
-
 export default function GameView() {
   const {
     currentGame,
@@ -217,24 +133,6 @@ export default function GameView() {
     });
     return cache;
   }, [currentGame?.rotations.length, timer.pausedAt, timer.totalPausedDuration, timer.elapsedSeconds, players]);
-
-  const playerTotalFieldTime = useMemo(() => {
-    if (!currentGame) return {};
-    const cache: Record<string, number> = {};
-    players.forEach((p) => {
-      cache[p.id] = calculatePlayerTotalFieldTime(p.id, currentGame, timer);
-    });
-    return cache;
-  }, [currentGame?.rotations.length, timer.pausedAt, timer.totalPausedDuration, timer.pausePeriods, timer.elapsedSeconds, players]);
-
-  const playerRotationCounts = useMemo(() => {
-    if (!currentGame) return {};
-    const cache: Record<string, number> = {};
-    players.forEach((p) => {
-      cache[p.id] = calculatePlayerRotationCount(p.id, currentGame);
-    });
-    return cache;
-  }, [currentGame?.rotations.length, players]);
 
   // Helper function for bench time (wrapper around zone minutes)
   const getPlayerBenchTime = (playerId: string): number => {
@@ -397,20 +295,12 @@ export default function GameView() {
             </div>
           </div>
 
-          {/* Playing Time Summary */}
-          <PlayingTimeSummary
-            players={players}
-            getPlayerTotalFieldTime={(id) => playerTotalFieldTime[id] || 0}
-            totalGameMinutes={Math.floor(timer.elapsedSeconds / 60)}
-          />
-
           <FieldFormation
             assignments={currentAssignments}
             players={players}
             selectedPlayerId={selectedPlayerId}
             onPlayerSelect={handlePlayerSelect}
             getPlayerMinutes={(id) => playerZoneMinutes[id] || 0}
-            getPlayerRotationCount={(id) => playerRotationCounts[id] || 0}
             alertedPlayers={alertedPlayers}
             stagedSwaps={stagedSwaps}
           />
@@ -437,7 +327,6 @@ export default function GameView() {
             onPlayerSelect={handlePlayerSelect}
             getPlayerMinutes={(id) => playerZoneMinutes[id] || 0}
             getPlayerBenchTime={getPlayerBenchTime}
-            getPlayerRotationCount={(id) => playerRotationCounts[id] || 0}
             alertedPlayers={alertedPlayers}
             stagedSwaps={stagedSwaps}
           />
