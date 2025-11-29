@@ -14,6 +14,7 @@ import BenchArea from './BenchArea';
 import FormationSetupView from './FormationSetupView';
 import PlanningModeToggle from './PlanningModeToggle';
 import StagedSwapsPanel from './StagedSwapsPanel';
+import SwapModal from './SwapModal';
 
 // ============================================================================
 // Helper Functions (Outside Component to Prevent Recreat ion)
@@ -194,40 +195,53 @@ export default function GameView() {
     }
   };
 
-  const handlePlayerSelect = async (playerId: string) => {
-    // In planning mode, stage swaps instead of executing them immediately
-    if (planningMode) {
-      if (selectedPlayerId && selectedPlayerId !== playerId) {
-        // Determine which is bench and which is field
-        const player1Pos = currentAssignments[selectedPlayerId];
-        const player2Pos = currentAssignments[playerId];
-
-        // Only allow bench ↔ field swaps in planning mode
-        if (player1Pos === 'BENCH' && player2Pos !== 'BENCH') {
-          stageSwap(selectedPlayerId, playerId);
-          setSelectedPlayerId(null);
-        } else if (player2Pos === 'BENCH' && player1Pos !== 'BENCH') {
-          stageSwap(playerId, selectedPlayerId);
-          setSelectedPlayerId(null);
-        } else {
-          // Both on field or both on bench - not allowed in planning mode
-          alert('In planning mode, you can only stage bench ↔ field swaps');
-          setSelectedPlayerId(null);
-        }
-      } else {
-        // Select player
-        setSelectedPlayerId(playerId);
-      }
+  // Handle player selection - opens the swap modal
+  const handlePlayerSelect = (playerId: string) => {
+    // If tapping the same player, deselect
+    if (selectedPlayerId === playerId) {
+      setSelectedPlayerId(null);
     } else {
-      // Normal mode: immediate swap
-      if (selectedPlayerId && selectedPlayerId !== playerId) {
-        await swapPlayers(selectedPlayerId, playerId);
-        setSelectedPlayerId(null);
-      } else {
-        setSelectedPlayerId(playerId);
-      }
+      // Select the player to open the swap modal
+      setSelectedPlayerId(playerId);
     }
   };
+
+  // Handle swap from the modal
+  const handleSwapFromModal = async (targetPlayerId: string) => {
+    if (!selectedPlayerId) return;
+
+    if (planningMode) {
+      // Determine which is bench and which is field
+      const player1Pos = currentAssignments[selectedPlayerId];
+      const player2Pos = currentAssignments[targetPlayerId];
+
+      // Only allow bench ↔ field swaps in planning mode
+      if (player1Pos === 'BENCH' && player2Pos !== 'BENCH') {
+        stageSwap(selectedPlayerId, targetPlayerId);
+      } else if (player2Pos === 'BENCH' && player1Pos !== 'BENCH') {
+        stageSwap(targetPlayerId, selectedPlayerId);
+      }
+      // Modal already filters invalid targets, but this is a safety check
+    } else {
+      // Normal mode: immediate swap
+      await swapPlayers(selectedPlayerId, targetPlayerId);
+    }
+
+    setSelectedPlayerId(null);
+  };
+
+  // Handle modal cancel
+  const handleModalCancel = () => {
+    setSelectedPlayerId(null);
+  };
+
+  // Get selected player object and position
+  const selectedPlayer = selectedPlayerId
+    ? players.find((p) => p.id === selectedPlayerId)
+    : null;
+  const selectedPlayerPosition = selectedPlayerId
+    ? currentAssignments[selectedPlayerId]
+    : null;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -305,17 +319,6 @@ export default function GameView() {
             stagedSwaps={stagedSwaps}
           />
 
-          {/* Selection Help - Positioned above bench */}
-          {selectedPlayerId && (
-            <div className={`mt-4 text-white px-6 py-3 rounded-xl shadow-lg text-center font-semibold ${
-              planningMode ? 'bg-orange-500' : 'bg-raiders-red'
-            }`}>
-              {planningMode
-                ? 'Tap another player to stage a swap (bench ↔ field only)'
-                : 'Tap another player to swap positions'
-              }
-            </div>
-          )}
         </div>
 
         {/* Bench */}
@@ -349,6 +352,20 @@ export default function GameView() {
         </button>
       </div>
 
+      {/* Swap Modal - Shows when player is selected */}
+      {selectedPlayer && selectedPlayerPosition && (
+        <SwapModal
+          selectedPlayer={selectedPlayer}
+          selectedPlayerPosition={selectedPlayerPosition}
+          allPlayers={players.filter((p) => p.isActive)}
+          assignments={currentAssignments}
+          onSwap={handleSwapFromModal}
+          onCancel={handleModalCancel}
+          getPlayerMinutes={(id) => playerZoneMinutes[id] || 0}
+          planningMode={planningMode}
+          stagedSwaps={stagedSwaps}
+        />
+      )}
     </div>
   );
 }
