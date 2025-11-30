@@ -6,6 +6,7 @@
  */
 
 import type { Player, PositionAssignments, StagedSwap } from '../../types';
+import { useAppStore } from '../../store';
 
 interface SwapModalProps {
   selectedPlayer: Player;
@@ -30,6 +31,8 @@ export default function SwapModal({
   planningMode,
   stagedSwaps,
 }: SwapModalProps) {
+  const { selectedFormation } = useAppStore();
+
   // Separate field and bench players (excluding selected player)
   const fieldPlayers = allPlayers.filter(
     (p) => p.id !== selectedPlayer.id && assignments[p.id] !== 'BENCH'
@@ -50,51 +53,66 @@ export default function SwapModal({
   // Check if player is in a staged swap
   const isPlayerStaged = (playerId: string): boolean => {
     return stagedSwaps.some(
-      (s) => s.benchPlayerId === playerId || s.fieldPlayerId === playerId
+      (s) => s.player1Id === playerId || s.player2Id === playerId
     );
   };
 
-  // In planning mode, only show valid targets (bench ↔ field)
-  const getValidTargets = () => {
-    if (!planningMode) {
-      // In instant mode, all players are valid targets
-      return { fieldTargets: fieldPlayers, benchTargets: benchPlayers };
-    }
+  // Get position label for a player based on their position and formation
+  const getPositionLabel = (playerId: string): string | undefined => {
+    const position = assignments[playerId];
+    if (!position || position === 'BENCH') return undefined;
 
-    // In planning mode, only opposite zone players are valid
-    if (isSelectedOnBench) {
-      // Selected is on bench, can only swap with field players
-      return { fieldTargets: fieldPlayers, benchTargets: [] };
-    } else {
-      // Selected is on field, can only swap with bench players
-      return { fieldTargets: [], benchTargets: benchPlayers };
+    // Get all players at this position type
+    const playersAtPosition = Object.entries(assignments)
+      .filter(([, pos]) => pos === position)
+      .map(([id]) => id);
+
+    const playerIndex = playersAtPosition.indexOf(playerId);
+    if (playerIndex === -1) return undefined;
+
+    // Position labels based on formation
+    if (position === 'GK') return 'GK';
+    if (position === 'DEF') {
+      const defLabels = ['LD', 'CD', 'RD'];
+      return defLabels[playerIndex];
     }
+    if (position === 'MID') {
+      const midLabels = selectedFormation === 'A'
+        ? ['LM', 'CM', 'RM']
+        : ['LM', 'CLM', 'CRM', 'RM'];
+      return midLabels[playerIndex];
+    }
+    if (position === 'FWD') {
+      const fwdLabels = selectedFormation === 'A'
+        ? ['LF', 'RF']
+        : ['CF'];
+      return fwdLabels[playerIndex];
+    }
+    return undefined;
   };
 
-  const { fieldTargets, benchTargets } = getValidTargets();
+  // All players are valid targets in both modes now
+  const fieldTargets = fieldPlayers;
+  const benchTargets = benchPlayers;
 
   const renderPlayerButton = (player: Player, isOnField: boolean) => {
     const minutes = getPlayerMinutes(player.id);
     const isStaged = isPlayerStaged(player.id);
-    const isDisabled = planningMode && (
-      (isSelectedOnBench && !isOnField) || (!isSelectedOnBench && isOnField)
-    );
+    const positionLabel = isOnField ? getPositionLabel(player.id) : undefined;
 
     return (
       <button
         key={player.id}
-        onClick={() => !isDisabled && onSwap(player.id)}
-        disabled={isDisabled}
+        onClick={() => onSwap(player.id)}
         className={`
           w-16 h-16 rounded-xl font-bold flex flex-col items-center justify-center
-          transform transition-all active:scale-95 touch-target
+          transform transition-all active:scale-95 touch-target hover:scale-105 shadow-md
           ${isStaged
             ? 'bg-orange-500 text-white border-2 border-orange-300'
             : isOnField
               ? getTimeBasedColor(minutes)
               : 'bg-white text-gray-900 border border-gray-300'
           }
-          ${isDisabled ? 'opacity-40 cursor-not-allowed' : 'hover:scale-105 shadow-md'}
         `}
       >
         {minutes > 0 && (
@@ -106,6 +124,11 @@ export default function SwapModal({
         <div className="text-[10px] leading-tight truncate max-w-full px-1">
           {player.name.split(' ')[0]}
         </div>
+        {positionLabel && (
+          <div className="text-[8px] font-semibold opacity-80">
+            {positionLabel}
+          </div>
+        )}
       </button>
     );
   };
@@ -174,10 +197,7 @@ export default function SwapModal({
           {/* Planning mode hint */}
           {planningMode && (
             <div className="text-center text-sm text-gray-500 py-2">
-              {isSelectedOnBench
-                ? 'Tap a field player to stage swap'
-                : 'Tap a bench player to stage swap'
-              }
+              Tap any player to stage a swap
             </div>
           )}
         </div>

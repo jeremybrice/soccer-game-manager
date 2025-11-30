@@ -1,17 +1,17 @@
 /**
  * Staged Swaps Panel Component
  *
- * Philosophy: Clear overview. Easy management. One-tap execution.
- * Show all pending swaps with ability to edit or execute.
+ * Philosophy: Compact. Space-conscious. One-tap execution.
+ * Pill-style layout for mobile-friendly display below the field.
  */
 
-import { useState } from 'react';
-import type { Player, StagedSwap } from '../../types';
-import SwapPairCard from './SwapPairCard';
+import type { Player, StagedSwap, PositionAssignments } from '../../types';
+import { useAppStore } from '../../store';
 
 interface StagedSwapsPanelProps {
   stagedSwaps: StagedSwap[];
   players: Player[];
+  assignments: PositionAssignments;
   onExecuteAll: () => Promise<void>;
   onClearAll: () => void;
   onRemoveSwap: (swapId: string) => void;
@@ -20,104 +20,118 @@ interface StagedSwapsPanelProps {
 export default function StagedSwapsPanel({
   stagedSwaps,
   players,
+  assignments,
   onExecuteAll,
   onClearAll,
   onRemoveSwap,
 }: StagedSwapsPanelProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
-  const [isExecuting, setIsExecuting] = useState(false);
+  const { selectedFormation } = useAppStore();
 
   if (stagedSwaps.length === 0) {
     return null; // Don't show panel if no staged swaps
   }
 
-  const handleExecuteAll = async () => {
-    setIsExecuting(true);
-    try {
-      await onExecuteAll();
-    } finally {
-      setIsExecuting(false);
-    }
-  };
-
   const getPlayer = (playerId: string): Player | undefined => {
     return players.find(p => p.id === playerId);
   };
 
-  return (
-    <div className="bg-white/95 backdrop-blur rounded-xl shadow-xl p-4 mb-4 border-2 border-orange-400">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center space-x-2 font-bold text-gray-900 touch-target"
-        >
-          <span className="text-xl">
-            {isExpanded ? '▼' : '▶'}
-          </span>
-          <span>
-            Staged Rotations ({stagedSwaps.length})
-          </span>
-        </button>
+  // Get position label for a player
+  const getPositionLabel = (playerId: string): string => {
+    const position = assignments[playerId];
+    if (!position) return '?';
+    if (position === 'BENCH') return 'B';
 
-        <div className="flex items-center space-x-2">
+    // Get all players at this position type
+    const playersAtPosition = Object.entries(assignments)
+      .filter(([, pos]) => pos === position)
+      .map(([id]) => id);
+
+    const playerIndex = playersAtPosition.indexOf(playerId);
+
+    // Position labels based on formation
+    if (position === 'GK') return 'GK';
+    if (position === 'DEF') {
+      const defLabels = ['LD', 'CD', 'RD'];
+      return defLabels[playerIndex] || 'D';
+    }
+    if (position === 'MID') {
+      const midLabels = selectedFormation === 'A'
+        ? ['LM', 'CM', 'RM']
+        : ['LM', 'CLM', 'CRM', 'RM'];
+      return midLabels[playerIndex] || 'M';
+    }
+    if (position === 'FWD') {
+      const fwdLabels = selectedFormation === 'A'
+        ? ['LF', 'RF']
+        : ['CF'];
+      return fwdLabels[playerIndex] || 'F';
+    }
+    return '?';
+  };
+
+  const handleExecuteAll = async () => {
+    await onExecuteAll();
+  };
+
+  return (
+    <div className="mt-4 bg-orange-100/90 backdrop-blur rounded-xl border-l-4 border-orange-500 px-3 py-2">
+      <div className="flex items-center gap-2 overflow-x-auto">
+        {/* Label */}
+        <span className="text-sm font-semibold text-orange-700 whitespace-nowrap flex-shrink-0">
+          Staged ({stagedSwaps.length}):
+        </span>
+
+        {/* Swap Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto flex-1 min-w-0">
+          {stagedSwaps.map((swap) => {
+            const player1 = getPlayer(swap.player1Id);
+            const player2 = getPlayer(swap.player2Id);
+
+            if (!player1 || !player2) return null;
+
+            const pos1 = getPositionLabel(swap.player1Id);
+            const pos2 = getPositionLabel(swap.player2Id);
+
+            return (
+              <div
+                key={swap.id}
+                className="inline-flex items-center bg-orange-500 text-white rounded-full px-2 py-1 text-xs font-bold gap-1 flex-shrink-0"
+              >
+                <span className="opacity-80">{pos1}</span>
+                <span>#{player1.number}</span>
+                <span className="text-orange-200">↔</span>
+                <span>#{player2.number}</span>
+                <span className="opacity-80">{pos2}</span>
+                <button
+                  onClick={() => onRemoveSwap(swap.id)}
+                  className="ml-1 text-orange-200 hover:text-white active:scale-90 transition-transform"
+                  aria-label={`Remove swap between ${player1.name} and ${player2.name}`}
+                >
+                  ✕
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={handleExecuteAll}
+            className="bg-raiders-red hover:bg-raiders-red-dark text-white rounded-full px-3 py-1 text-xs font-bold active:scale-95 transition-transform whitespace-nowrap touch-target"
+          >
+            ▶ Execute
+          </button>
           {stagedSwaps.length > 1 && (
             <button
               onClick={onClearAll}
-              className="touch-target text-gray-600 hover:text-gray-900 text-sm font-semibold px-3 py-2 rounded-lg hover:bg-gray-100"
+              className="text-orange-600 hover:text-orange-800 text-xs font-semibold px-2 py-1 active:scale-95 transition-transform whitespace-nowrap"
             >
-              Clear All
+              Clear
             </button>
           )}
         </div>
       </div>
-
-      {/* Expanded Content */}
-      {isExpanded && (
-        <>
-          {/* Swap List */}
-          <div className="space-y-2 mb-4">
-            {stagedSwaps.map((swap) => {
-              const benchPlayer = getPlayer(swap.benchPlayerId);
-              const fieldPlayer = getPlayer(swap.fieldPlayerId);
-
-              if (!benchPlayer || !fieldPlayer) {
-                return null; // Skip invalid swaps
-              }
-
-              return (
-                <SwapPairCard
-                  key={swap.id}
-                  benchPlayer={benchPlayer}
-                  fieldPlayer={fieldPlayer}
-                  onCancel={() => onRemoveSwap(swap.id)}
-                />
-              );
-            })}
-          </div>
-
-          {/* Execute Button */}
-          <button
-            onClick={handleExecuteAll}
-            disabled={isExecuting}
-            className={`w-full touch-target font-bold py-4 rounded-xl transition-all transform shadow-lg ${
-              isExecuting
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-raiders-red hover:bg-raiders-red-dark text-white hover:scale-105 active:scale-95'
-            }`}
-          >
-            {isExecuting
-              ? 'Executing Swaps...'
-              : `Execute All ${stagedSwaps.length} Swap${stagedSwaps.length > 1 ? 's' : ''}`
-            }
-          </button>
-
-          {/* Info Message */}
-          <div className="mt-3 text-xs text-gray-600 text-center">
-            All swaps will be executed simultaneously when game is next resumed
-          </div>
-        </>
-      )}
     </div>
   );
 }

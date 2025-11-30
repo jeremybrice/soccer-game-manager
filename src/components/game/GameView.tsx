@@ -200,17 +200,8 @@ export default function GameView() {
     if (!selectedPlayerId) return;
 
     if (planningMode) {
-      // Determine which is bench and which is field
-      const player1Pos = currentAssignments[selectedPlayerId];
-      const player2Pos = currentAssignments[targetPlayerId];
-
-      // Only allow bench ↔ field swaps in planning mode
-      if (player1Pos === 'BENCH' && player2Pos !== 'BENCH') {
-        stageSwap(selectedPlayerId, targetPlayerId);
-      } else if (player2Pos === 'BENCH' && player1Pos !== 'BENCH') {
-        stageSwap(targetPlayerId, selectedPlayerId);
-      }
-      // Modal already filters invalid targets, but this is a safety check
+      // Stage any swap (field↔bench or field↔field)
+      stageSwap(selectedPlayerId, targetPlayerId);
     } else {
       // Normal mode: immediate swap
       await swapPlayers(selectedPlayerId, targetPlayerId);
@@ -264,17 +255,6 @@ export default function GameView() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Field Formation */}
         <div className="flex-1 bg-gradient-to-b from-field-light to-field p-4 overflow-y-auto">
-          {/* Staged Swaps Panel */}
-          {planningMode && (
-            <StagedSwapsPanel
-              stagedSwaps={stagedSwaps}
-              players={players}
-              onExecuteAll={executeStagedSwaps}
-              onClearAll={clearStagedSwaps}
-              onRemoveSwap={unstageSwap}
-            />
-          )}
-
           {/* Color Legend */}
           <div className="flex justify-center items-center space-x-3 mb-3 bg-black/20 backdrop-blur-sm rounded-lg py-2 px-3">
             <div className="flex items-center space-x-1">
@@ -300,6 +280,18 @@ export default function GameView() {
             alertedPlayers={alertedPlayers}
             stagedSwaps={stagedSwaps}
           />
+
+          {/* Staged Swaps Panel - Below field formation */}
+          {planningMode && (
+            <StagedSwapsPanel
+              stagedSwaps={stagedSwaps}
+              players={players}
+              assignments={currentAssignments}
+              onExecuteAll={executeStagedSwaps}
+              onClearAll={clearStagedSwaps}
+              onRemoveSwap={unstageSwap}
+            />
+          )}
         </div>
       </div>
 
