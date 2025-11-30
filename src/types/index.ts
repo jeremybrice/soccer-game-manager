@@ -248,11 +248,11 @@ export interface TutorialStep {
 
 /**
  * A pending player swap in planning mode
- * Represents bench player → field player swap to be executed later
+ * Represents any player swap to be executed later (field↔bench or field↔field)
  */
 export interface StagedSwap {
   id: string;
-  benchPlayerId: string;
-  fieldPlayerId: string;
+  player1Id: string;
+  player2Id: string;
   timestamp: number;
 }

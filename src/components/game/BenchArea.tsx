@@ -38,9 +38,14 @@ export default function BenchArea({
 
   // Check if bench player is in a staged swap
   const getPlayerStagedStatus = (playerId: string): { isStaged: boolean; direction?: 'toField' | 'toBench' } => {
-    const swap = stagedSwaps.find(s => s.benchPlayerId === playerId);
+    const swap = stagedSwaps.find(s => s.player1Id === playerId || s.player2Id === playerId);
     if (swap) {
-      return { isStaged: true, direction: 'toField' };
+      // Determine direction based on swap partner's position
+      const partnerId = swap.player1Id === playerId ? swap.player2Id : swap.player1Id;
+      const partnerPosition = assignments[partnerId];
+      const isPartnerOnField = partnerPosition !== 'BENCH';
+      // If partner is on field, this bench player is going to field
+      return { isStaged: true, direction: isPartnerOnField ? 'toField' : undefined };
     }
     return { isStaged: false };
   };

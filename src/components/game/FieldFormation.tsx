@@ -36,9 +36,15 @@ export default function FieldFormation({
 
   // Check if player is in a staged swap
   const getPlayerStagedStatus = (playerId: string): { isStaged: boolean; direction?: 'toField' | 'toBench' } => {
-    const swap = stagedSwaps.find(s => s.fieldPlayerId === playerId);
+    const swap = stagedSwaps.find(s => s.player1Id === playerId || s.player2Id === playerId);
     if (swap) {
-      return { isStaged: true, direction: 'toBench' };
+      // Determine direction based on swap partner's position
+      const partnerId = swap.player1Id === playerId ? swap.player2Id : swap.player1Id;
+      const partnerPosition = assignments[partnerId];
+      const isPartnerOnBench = partnerPosition === 'BENCH';
+      // If partner is on bench, this field player is going to bench
+      // If partner is also on field, it's a field-to-field position swap (no direction indicator)
+      return { isStaged: true, direction: isPartnerOnBench ? 'toBench' : undefined };
     }
     return { isStaged: false };
   };

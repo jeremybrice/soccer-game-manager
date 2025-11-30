@@ -190,9 +190,9 @@ interface AppState {
   togglePlanningMode: () => void;
 
   /**
-   * Stage a player swap (bench player → field player)
+   * Stage a player swap (any two players)
    */
-  stageSwap: (benchPlayerId: string, fieldPlayerId: string) => void;
+  stageSwap: (player1Id: string, player2Id: string) => void;
 
   /**
    * Remove a staged swap by ID
@@ -927,13 +927,15 @@ export const useAppStore = create<AppState>()((set, get) => ({
     }));
   },
 
-  stageSwap: (benchPlayerId, fieldPlayerId) => {
+  stageSwap: (player1Id, player2Id) => {
     set((state) => {
       // Check if either player is already in a staged swap
       const existingSwapIndex = state.stagedSwaps.findIndex(
         (swap) =>
-          swap.benchPlayerId === benchPlayerId ||
-          swap.fieldPlayerId === fieldPlayerId
+          swap.player1Id === player1Id ||
+          swap.player2Id === player2Id ||
+          swap.player1Id === player2Id ||
+          swap.player2Id === player1Id
       );
 
       let newStagedSwaps: StagedSwap[];
@@ -943,8 +945,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
         newStagedSwaps = [...state.stagedSwaps];
         newStagedSwaps[existingSwapIndex] = {
           id: crypto.randomUUID(),
-          benchPlayerId,
-          fieldPlayerId,
+          player1Id,
+          player2Id,
           timestamp: Date.now(),
         };
       } else {
@@ -953,14 +955,14 @@ export const useAppStore = create<AppState>()((set, get) => ({
           ...state.stagedSwaps,
           {
             id: crypto.randomUUID(),
-            benchPlayerId,
-            fieldPlayerId,
+            player1Id,
+            player2Id,
             timestamp: Date.now(),
           },
         ];
       }
 
-      console.log(`[Store] Staged swap: Bench #${benchPlayerId} ↔ Field #${fieldPlayerId}`);
+      console.log(`[Store] Staged swap: #${player1Id} ↔ #${player2Id}`);
       return { stagedSwaps: newStagedSwaps };
     });
   },
@@ -985,42 +987,15 @@ export const useAppStore = create<AppState>()((set, get) => ({
     }
 
     try {
-      // Validate all staged swaps are still valid
-      const invalidSwaps: string[] = [];
-
-      for (const swap of stagedSwaps) {
-        const benchPos = currentAssignments[swap.benchPlayerId];
-        const fieldPos = currentAssignments[swap.fieldPlayerId];
-
-        if (benchPos !== 'BENCH') {
-          invalidSwaps.push(
-            `Player ${swap.benchPlayerId} is no longer on bench`
-          );
-        }
-        if (fieldPos === 'BENCH') {
-          invalidSwaps.push(
-            `Player ${swap.fieldPlayerId} is no longer on field`
-          );
-        }
-      }
-
-      if (invalidSwaps.length > 0) {
-        set({
-          error: `Cannot execute swaps: ${invalidSwaps.join(', ')}`,
-        });
-        // Clear invalid staged swaps
-        get().clearStagedSwaps();
-        return;
-      }
-
       // Execute all swaps simultaneously by building new assignments
       let newAssignments = { ...currentAssignments };
 
       for (const swap of stagedSwaps) {
-        const fieldPosition = newAssignments[swap.fieldPlayerId];
+        const pos1 = newAssignments[swap.player1Id];
+        const pos2 = newAssignments[swap.player2Id];
         // Swap positions
-        newAssignments[swap.benchPlayerId] = fieldPosition;
-        newAssignments[swap.fieldPlayerId] = 'BENCH';
+        newAssignments[swap.player1Id] = pos2;
+        newAssignments[swap.player2Id] = pos1;
       }
 
       // Save rotation to database
