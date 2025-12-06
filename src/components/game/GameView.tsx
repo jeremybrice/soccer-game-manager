@@ -115,7 +115,6 @@ export default function GameView() {
     togglePlanningMode,
     stageSwap,
     unstageSwap,
-    clearStagedSwaps,
     executeStagedSwaps,
     swapPlayers,
   } = useAppStore();
@@ -287,8 +286,6 @@ export default function GameView() {
               stagedSwaps={stagedSwaps}
               players={players}
               assignments={currentAssignments}
-              onExecuteAll={executeStagedSwaps}
-              onClearAll={clearStagedSwaps}
               onRemoveSwap={unstageSwap}
             />
           )}
@@ -312,12 +309,26 @@ export default function GameView() {
             </span>
           )}
         </button>
-        <button
-          onClick={handleEndGame}
-          className="flex-1 touch-target bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl"
-        >
-          End Game
-        </button>
+        {planningMode ? (
+          <button
+            onClick={executeStagedSwaps}
+            disabled={stagedSwaps.length === 0}
+            className={`flex-1 touch-target font-bold py-3 rounded-xl ${
+              stagedSwaps.length > 0
+                ? 'bg-green-500 hover:bg-green-600 text-white'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            Execute Swaps
+          </button>
+        ) : (
+          <button
+            onClick={handleEndGame}
+            className="flex-1 touch-target bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl"
+          >
+            End Game
+          </button>
+        )}
       </div>
 
       {/* Swap Modal - Shows when player is selected */}

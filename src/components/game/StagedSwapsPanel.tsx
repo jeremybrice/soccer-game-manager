@@ -12,8 +12,6 @@ interface StagedSwapsPanelProps {
   stagedSwaps: StagedSwap[];
   players: Player[];
   assignments: PositionAssignments;
-  onExecuteAll: () => Promise<void>;
-  onClearAll: () => void;
   onRemoveSwap: (swapId: string) => void;
 }
 
@@ -21,8 +19,6 @@ export default function StagedSwapsPanel({
   stagedSwaps,
   players,
   assignments,
-  onExecuteAll,
-  onClearAll,
   onRemoveSwap,
 }: StagedSwapsPanelProps) {
   const { selectedFormation } = useAppStore();
@@ -69,10 +65,6 @@ export default function StagedSwapsPanel({
     return '?';
   };
 
-  const handleExecuteAll = async () => {
-    await onExecuteAll();
-  };
-
   return (
     <div className="mt-4 bg-orange-100/90 backdrop-blur rounded-xl border-l-4 border-orange-500 px-3 py-2">
       <div className="flex items-center gap-2 overflow-x-auto">
@@ -112,24 +104,6 @@ export default function StagedSwapsPanel({
               </div>
             );
           })}
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <button
-            onClick={handleExecuteAll}
-            className="bg-raiders-red hover:bg-raiders-red-dark text-white rounded-full px-3 py-1 text-xs font-bold active:scale-95 transition-transform whitespace-nowrap touch-target"
-          >
-            ▶ Execute
-          </button>
-          {stagedSwaps.length > 1 && (
-            <button
-              onClick={onClearAll}
-              className="text-orange-600 hover:text-orange-800 text-xs font-semibold px-2 py-1 active:scale-95 transition-transform whitespace-nowrap"
-            >
-              Clear
-            </button>
-          )}
         </div>
       </div>
     </div>
