@@ -684,10 +684,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
         };
 
         // Also set quarterStartedAt if not already set (v3.1.0)
+        // Note: Do NOT reset isAutoStopped here - let callers manage that flag
+        // This prevents auto-stop from re-triggering when continuing into overtime
         const newQuarterState = {
           ...state.quarterState,
           quarterStartedAt: state.quarterState.quarterStartedAt || now,
-          isAutoStopped: false, // Clear auto-stop flag when resuming
         };
 
         // Persist timer state to database
@@ -889,14 +890,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
   continueQuarter: () => {
     // Resume current quarter after auto-stop (referee hasn't stopped play yet)
     // This enters overtime mode - timer continues past 15:00
+    // Note: Keep isAutoStopped true to prevent auto-stop from re-triggering
+    // The modal hides because condition is `isAutoStopped && !timer.isRunning`
     const { startTimer } = get();
-    set((state) => ({
-      quarterState: {
-        ...state.quarterState,
-        isAutoStopped: false, // Clear auto-stop, allow overtime tracking
-      },
-    }));
-    startTimer(); // Resume the timer
+    startTimer(); // Resume the timer - modal will hide since timer is running
     console.log(`[Quarter] Continuing Q${get().quarterState.currentQuarter} into overtime`);
   },
 
