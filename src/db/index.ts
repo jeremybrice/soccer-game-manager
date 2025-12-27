@@ -215,6 +215,30 @@ export class SoccerDatabase extends Dexie {
   }
 
   /**
+   * Update quarter state for active game (v3.1.0)
+   */
+  async updateGameQuarterState(
+    gameId: string,
+    quarterState: {
+      currentQuarter: number;
+      quarterStartedAt?: Date;
+      quarterElapsedSeconds?: number;
+      isAutoStopped?: boolean;
+      overtimeSeconds?: number;
+    }
+  ): Promise<void> {
+    const game = await this.games.get(gameId);
+    if (game) {
+      game.quarterCurrentQuarter = quarterState.currentQuarter;
+      game.quarterStartedAt = quarterState.quarterStartedAt;
+      game.quarterIsAutoStopped = quarterState.isAutoStopped ?? false;
+      game.quarterOvertimeSeconds = quarterState.overtimeSeconds ?? 0;
+      await this.games.put(game);
+      console.log(`[DB] updateGameQuarterState: Q${quarterState.currentQuarter} for game ${gameId}`);
+    }
+  }
+
+  /**
    * Create or update a player
    */
   async savePlayer(player: Player): Promise<void> {

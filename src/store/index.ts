@@ -15,7 +15,10 @@ import type {
   TimerState,
   FormationType,
   StagedSwap,
+  QuarterConfig,
+  QuarterState,
 } from '../types';
+import { DEFAULT_QUARTER_CONFIG, DEFAULT_QUARTER_STATE } from '../types';
 import { db } from '../db';
 import {
   exportPlayersToCSV as exportCSV,
@@ -36,6 +39,10 @@ interface AppState {
   // UI State
   currentView: AppView;
   timer: TimerState;
+
+  // Quarter Management State (v3.1.0)
+  quarterConfig: QuarterConfig;
+  quarterState: QuarterState;
 
   // Formation State
   selectedFormation: FormationType;
@@ -158,6 +165,22 @@ interface AppState {
   updateTimer: () => void;
 
   // ========================================================================
+  // Quarter Management Actions (v3.1.0)
+  // ========================================================================
+
+  /**
+   * Continue current quarter after auto-stop (enters overtime mode)
+   * Use when referee hasn't stopped play yet
+   */
+  continueQuarter: () => void;
+
+  /**
+   * Advance to next quarter, reset quarter timer to 00:00
+   * Use when referee signals quarter end
+   */
+  startNextQuarter: () => void;
+
+  // ========================================================================
   // Navigation Actions
   // ========================================================================
 
@@ -269,6 +292,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
     totalPausedDuration: 0,
     pausePeriods: [],
   },
+  quarterConfig: DEFAULT_QUARTER_CONFIG,
+  quarterState: DEFAULT_QUARTER_STATE,
   selectedFormation: 'A',
   planningMode: false,
   stagedSwaps: [],
@@ -461,7 +486,16 @@ export const useAppStore = create<AppState>()((set, get) => ({
           pausePeriods: [],
           pausedAt: undefined,
           startedAt: undefined,
-        }
+        },
+        // Initialize quarter state for new game (v3.1.0)
+        quarterConfig: DEFAULT_QUARTER_CONFIG,
+        quarterState: {
+          currentQuarter: 1,
+          quarterElapsedSeconds: 0,
+          isAutoStopped: false,
+          overtimeSeconds: 0,
+          quarterStartedAt: undefined,
+        },
       });
       // Timer starts in paused state - coach must manually start it
     } catch (error) {
@@ -511,12 +545,23 @@ export const useAppStore = create<AppState>()((set, get) => ({
           pausePeriods: game.timerPausePeriods ?? [],
         };
 
+        // Restore quarter state from database (v3.1.0)
+        const restoredQuarterState: QuarterState = {
+          currentQuarter: game.quarterCurrentQuarter ?? 1,
+          quarterStartedAt: game.quarterStartedAt,
+          quarterElapsedSeconds: 0, // Will be calculated in updateTimer
+          isAutoStopped: game.quarterIsAutoStopped ?? false,
+          overtimeSeconds: game.quarterOvertimeSeconds ?? 0,
+        };
+
         console.log('[Store] loadActiveGame: Restored timer state', restoredTimerState);
+        console.log('[Store] loadActiveGame: Restored quarter state', restoredQuarterState);
 
         set({
           currentGame: game,
           currentAssignments: latestRotation.assignments,
           timer: restoredTimerState,
+          quarterState: restoredQuarterState,
         });
       }
     } catch (error) {
@@ -638,6 +683,13 @@ export const useAppStore = create<AppState>()((set, get) => ({
           pausePeriods: updatedPausePeriods,
         };
 
+        // Also set quarterStartedAt if not already set (v3.1.0)
+        const newQuarterState = {
+          ...state.quarterState,
+          quarterStartedAt: state.quarterState.quarterStartedAt || now,
+          isAutoStopped: false, // Clear auto-stop flag when resuming
+        };
+
         // Persist timer state to database
         if (state.currentGame) {
           db.updateGameTimerState(state.currentGame.id, {
@@ -646,9 +698,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
             timerTotalPausedDuration: newTimerState.totalPausedDuration,
             timerPausePeriods: newTimerState.pausePeriods,
           });
+          // Persist quarter state
+          db.updateGameQuarterState(state.currentGame.id, newQuarterState);
         }
 
-        return { timer: newTimerState };
+        return { timer: newTimerState, quarterState: newQuarterState };
       }
 
       // Starting fresh
@@ -656,6 +710,12 @@ export const useAppStore = create<AppState>()((set, get) => ({
         ...state.timer,
         isRunning: true,
         startedAt: now,
+      };
+
+      // Also set quarterStartedAt for first start (v3.1.0)
+      const newQuarterState = {
+        ...state.quarterState,
+        quarterStartedAt: state.quarterState.quarterStartedAt || now,
       };
 
       // Persist timer state to database
@@ -666,9 +726,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
           timerTotalPausedDuration: 0,
           timerPausePeriods: [],
         });
+        // Persist quarter state
+        db.updateGameQuarterState(state.currentGame.id, newQuarterState);
       }
 
-      return { timer: newTimerState };
+      return { timer: newTimerState, quarterState: newQuarterState };
     });
   },
 
@@ -724,13 +786,148 @@ export const useAppStore = create<AppState>()((set, get) => ({
       const elapsedMs = now - state.timer.startedAt.getTime() - state.timer.totalPausedDuration;
       const elapsedSeconds = Math.max(0, Math.floor(elapsedMs / 1000));
 
+      // ========================================================================
+      // Quarter Time Calculation (v3.1.0)
+      // ========================================================================
+      let quarterElapsedSeconds = 0;
+      let overtimeSeconds = 0;
+
+      if (state.quarterState.quarterStartedAt) {
+        const quarterStart = state.quarterState.quarterStartedAt.getTime();
+
+        // Calculate pause time that occurred during this quarter
+        let quarterPauseMs = 0;
+        for (const period of state.timer.pausePeriods) {
+          const pauseStart = period.pausedAt.getTime();
+          const pauseEnd = period.resumedAt ? period.resumedAt.getTime() : now;
+          // Only count pause time that occurred during this quarter
+          if (pauseEnd > quarterStart) {
+            const overlapStart = Math.max(quarterStart, pauseStart);
+            const overlapEnd = Math.min(now, pauseEnd);
+            quarterPauseMs += Math.max(0, overlapEnd - overlapStart);
+          }
+        }
+
+        const quarterElapsedMs = now - quarterStart - quarterPauseMs;
+        quarterElapsedSeconds = Math.max(0, Math.floor(quarterElapsedMs / 1000));
+
+        // Calculate overtime if past quarter duration
+        if (quarterElapsedSeconds > state.quarterConfig.durationSeconds) {
+          overtimeSeconds = quarterElapsedSeconds - state.quarterConfig.durationSeconds;
+        }
+      }
+
+      // Check for auto-stop at quarter end (only if running and not already stopped)
+      const shouldAutoStop =
+        state.timer.isRunning &&
+        !state.quarterState.isAutoStopped &&
+        quarterElapsedSeconds >= state.quarterConfig.durationSeconds;
+
+      if (shouldAutoStop) {
+        // Trigger haptic feedback for quarter end
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate([200, 100, 200]); // Distinct pattern for quarter end
+        }
+        console.log(`[Timer] Quarter ${state.quarterState.currentQuarter} complete - auto-stopping`);
+
+        // Auto-pause the timer
+        const pauseNow = new Date();
+        const newTimerState = {
+          ...state.timer,
+          elapsedSeconds,
+          isRunning: false,
+          pausedAt: pauseNow,
+          pausePeriods: [
+            ...state.timer.pausePeriods,
+            { pausedAt: pauseNow, resumedAt: undefined },
+          ],
+        };
+
+        const newQuarterState = {
+          ...state.quarterState,
+          quarterElapsedSeconds,
+          overtimeSeconds: 0, // No overtime yet - just hit the boundary
+          isAutoStopped: true,
+        };
+
+        // Persist to database
+        if (state.currentGame) {
+          db.updateGameTimerState(state.currentGame.id, {
+            timerStartedAt: newTimerState.startedAt,
+            timerPausedAt: pauseNow,
+            timerTotalPausedDuration: newTimerState.totalPausedDuration,
+            timerPausePeriods: newTimerState.pausePeriods,
+          });
+          db.updateGameQuarterState(state.currentGame.id, newQuarterState);
+        }
+
+        return {
+          timer: newTimerState,
+          quarterState: newQuarterState,
+        };
+      }
+
+      // Normal update - just update elapsed times
       return {
         timer: {
           ...state.timer,
           elapsedSeconds,
         },
+        quarterState: {
+          ...state.quarterState,
+          quarterElapsedSeconds,
+          overtimeSeconds,
+        },
       };
     });
+  },
+
+  // ========================================================================
+  // Quarter Management (v3.1.0)
+  // ========================================================================
+
+  continueQuarter: () => {
+    // Resume current quarter after auto-stop (referee hasn't stopped play yet)
+    // This enters overtime mode - timer continues past 15:00
+    const { startTimer } = get();
+    set((state) => ({
+      quarterState: {
+        ...state.quarterState,
+        isAutoStopped: false, // Clear auto-stop, allow overtime tracking
+      },
+    }));
+    startTimer(); // Resume the timer
+    console.log(`[Quarter] Continuing Q${get().quarterState.currentQuarter} into overtime`);
+  },
+
+  startNextQuarter: () => {
+    // Advance to next quarter, reset quarter timer
+    const { quarterState, quarterConfig, currentGame } = get();
+    const nextQuarter = quarterState.currentQuarter + 1;
+
+    // Check if game is complete (past Q4)
+    if (nextQuarter > quarterConfig.totalQuarters) {
+      console.log('[Quarter] Game complete - all quarters finished');
+      // Game over - could trigger endGame or show completion UI
+      return;
+    }
+
+    const newQuarterState: QuarterState = {
+      currentQuarter: nextQuarter,
+      quarterStartedAt: undefined, // Will be set when timer starts
+      quarterElapsedSeconds: 0,
+      isAutoStopped: false,
+      overtimeSeconds: 0,
+    };
+
+    set({ quarterState: newQuarterState });
+
+    // Persist to database
+    if (currentGame) {
+      db.updateGameQuarterState(currentGame.id, newQuarterState);
+    }
+
+    console.log(`[Quarter] Advanced to Q${nextQuarter} - ready to start`);
   },
 
   // ========================================================================

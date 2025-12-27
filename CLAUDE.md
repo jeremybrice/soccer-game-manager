@@ -6,7 +6,7 @@ Youth soccer coaching PWA for the **St. Pete Raiders U10 Boys Jordan** team. Man
 
 **Core Philosophy**: "Glanceable. One-handed operation. No thinking required."
 
-**Current Version**: v2.4.1 (stored in `package.json:4` and `HomeView.tsx:105`)
+**Current Version**: v3.1.0 (stored in `package.json:4` and `HomeView.tsx:105`)
 
 ---
 
@@ -80,6 +80,27 @@ Game pause affects all timers. Store tracks:
 - `pausedAt`: Timestamp when paused
 - `totalPausedDuration`: Cumulative pause time (ms)
 - Timer calculations subtract pause duration
+
+### Quarter System (v3.1.0)
+
+**Auto-pause at quarter boundaries**. Game has 4 quarters × 15 minutes each.
+
+**Behavior**:
+- Timer displays quarter (Q1-Q4) and quarter elapsed time
+- Auto-pauses at 15:00 mark with overlay
+- Two options: "Continue Quarter" (referee still playing) or "Start Next Quarter"
+- Overtime tracked as `+MM:SS` when continuing past 15:00
+- Q4 end shows "Game Complete" with End Game option
+
+**State** (`types/index.ts`):
+- `QuarterConfig`: `durationSeconds` (900), `totalQuarters` (4)
+- `QuarterState`: `currentQuarter`, `quarterStartedAt`, `quarterElapsedSeconds`, `isAutoStopped`, `overtimeSeconds`
+
+**Actions** (`store/index.ts`):
+- `continueQuarter()`: Resume after auto-stop, enters overtime mode
+- `startNextQuarter()`: Advance to next quarter, reset quarter timer
+
+**Component**: `QuarterEndOverlay.tsx` - Modal shown when quarter auto-stops
 
 ### Time-Based Colors
 
@@ -337,5 +358,7 @@ Minute-level only (sufficient for youth soccer). Updates on component re-renders
 - v2.3.2: Bug fixes - prevent player disappearing during swaps
 - v2.4.0: Simplified time-based colors - reduced from 4 to 3 tiers (green <10m, yellow 10-15m, red >15m)
 - v2.4.1: Bug fixes - synchronize game clock and player timers at game start
+- v3.0.0: Major refactor - slot-aware formations, improved UI, local Raiders logo
+- v3.1.0: Quarter-based clock management - auto-pause at 15-minute quarter boundaries, overtime tracking (+MM:SS), quarter indicator (Q1-Q4), soft auto-stop with Continue/Next Quarter options
 
-*Last updated: 2025-11-15 (v2.4.1)*
+*Last updated: 2025-12-27 (v3.1.0)*

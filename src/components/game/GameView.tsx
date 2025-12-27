@@ -14,6 +14,7 @@ import FieldFormation from './FieldFormation';
 import FormationSetupView from './FormationSetupView';
 import StagedSwapsPanel from './StagedSwapsPanel';
 import SwapModal from './SwapModal';
+import QuarterEndOverlay from './QuarterEndOverlay';
 
 // ============================================================================
 // Helper Functions (Outside Component to Prevent Recreat ion)
@@ -119,6 +120,11 @@ export default function GameView() {
     executeStagedSwaps,
     swapPlayers,
     selectedFormation,
+    // Quarter management (v3.1.0)
+    quarterState,
+    quarterConfig,
+    continueQuarter,
+    startNextQuarter,
   } = useAppStore();
 
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
@@ -231,7 +237,7 @@ export default function GameView() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header with Timer */}
+      {/* Header with Quarter Timer (v3.1.0) */}
       <div className="bg-field text-white px-4 py-3 shadow-lg">
         <div className="flex items-center justify-between">
           <button
@@ -242,15 +248,39 @@ export default function GameView() {
           </button>
 
           <div className="text-center">
-            <div className="text-3xl font-bold font-mono">
-              {formatTime(timer.elapsedSeconds)}
+            <div className="text-3xl font-bold font-mono flex items-center justify-center">
+              {/* Quarter indicator */}
+              <span className="bg-white/20 px-2 py-0.5 rounded text-xl mr-2">
+                Q{quarterState.currentQuarter}
+              </span>
+              {/* Quarter time - capped at duration for display, overtime shown separately */}
+              <span>
+                {formatTime(Math.min(quarterState.quarterElapsedSeconds, quarterConfig.durationSeconds))}
+              </span>
+              {/* Overtime indicator */}
+              {quarterState.overtimeSeconds > 0 && (
+                <span className="text-yellow-300 text-xl ml-1">
+                  +{formatTime(quarterState.overtimeSeconds)}
+                </span>
+              )}
             </div>
-            <div className="text-xs text-white/80">Game Time</div>
+            <div className="text-xs text-white/80">
+              {quarterState.isAutoStopped
+                ? 'Quarter Complete'
+                : timer.isRunning
+                  ? 'Game Time'
+                  : 'Paused'}
+            </div>
           </div>
 
           <button
             onClick={timer.isRunning ? pauseTimer : startTimer}
-            className="touch-target bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg font-semibold"
+            disabled={quarterState.isAutoStopped}
+            className={`touch-target px-4 py-2 rounded-lg font-semibold ${
+              quarterState.isAutoStopped
+                ? 'bg-white/10 text-white/50 cursor-not-allowed'
+                : 'bg-white/20 hover:bg-white/30'
+            }`}
           >
             {timer.isRunning ? '⏸' : '▶'}
           </button>
@@ -350,6 +380,17 @@ export default function GameView() {
           getPlayerMinutes={(id) => playerZoneMinutes[id] || 0}
           planningMode={planningMode}
           stagedSwaps={stagedSwaps}
+        />
+      )}
+
+      {/* Quarter End Overlay - Shows when quarter auto-stops (v3.1.0) */}
+      {quarterState.isAutoStopped && (
+        <QuarterEndOverlay
+          currentQuarter={quarterState.currentQuarter}
+          totalQuarters={quarterConfig.totalQuarters}
+          onContinue={continueQuarter}
+          onNextQuarter={startNextQuarter}
+          onEndGame={handleEndGame}
         />
       )}
     </div>

@@ -106,6 +106,13 @@ export interface GameSession {
   timerPausedAt?: Date;
   timerTotalPausedDuration?: number;
   timerPausePeriods?: PausePeriod[];
+
+  // Quarter state persistence (v3.1.0 - quarter-based clock management)
+  quarterConfig?: QuarterConfig;
+  quarterCurrentQuarter?: number;
+  quarterStartedAt?: Date;
+  quarterIsAutoStopped?: boolean;
+  quarterOvertimeSeconds?: number;
 }
 
 /**
@@ -188,6 +195,49 @@ export interface TimerState {
   totalPausedDuration: number; // Total milliseconds the game has been paused
   pausePeriods: PausePeriod[]; // Array of all pause periods for overlap calculation
 }
+
+// ============================================================================
+// Quarter Management Types
+// ============================================================================
+
+/**
+ * Quarter configuration - customizable per league/age group
+ * Default: 4 quarters x 15 minutes (youth soccer standard)
+ */
+export interface QuarterConfig {
+  durationSeconds: number;  // 900 = 15 minutes per quarter
+  totalQuarters: number;    // 4 quarters per game
+}
+
+/**
+ * Default quarter configuration for youth soccer
+ */
+export const DEFAULT_QUARTER_CONFIG: QuarterConfig = {
+  durationSeconds: 900,  // 15 minutes
+  totalQuarters: 4,
+};
+
+/**
+ * Quarter state tracking for auto-pause functionality
+ * Tracks current quarter progress and overtime when referee extends play
+ */
+export interface QuarterState {
+  currentQuarter: number;           // 1-4 (which quarter we're in)
+  quarterStartedAt?: Date;          // When current quarter clock started
+  quarterElapsedSeconds: number;    // Seconds elapsed in current quarter
+  isAutoStopped: boolean;           // True when auto-paused at quarter end
+  overtimeSeconds: number;          // Seconds continued past quarter duration (referee flexibility)
+}
+
+/**
+ * Default quarter state for new games
+ */
+export const DEFAULT_QUARTER_STATE: QuarterState = {
+  currentQuarter: 1,
+  quarterElapsedSeconds: 0,
+  isAutoStopped: false,
+  overtimeSeconds: 0,
+};
 
 // ============================================================================
 // Helper Types
