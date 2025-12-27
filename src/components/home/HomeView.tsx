@@ -25,7 +25,7 @@ export default function HomeView() {
       <div className="text-center mb-12">
         <div className="mb-4 flex justify-center">
           <img
-            src="https://www.northeastraiders.org/_templates/Home-New/images/logo.png"
+            src="/raiders-shield.svg"
             alt="Raiders Logo"
             className="h-36 w-auto"
           />

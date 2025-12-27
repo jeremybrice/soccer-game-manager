@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Shield outline with navy and red -->
+  <path d="M100 10 L180 50 L180 110 Q180 160 100 190 Q20 160 20 110 L20 50 Z"
+        fill="#1B2947" stroke="#C8102E" stroke-width="4"/>
+
+  <!-- Inner shield detail -->
+  <path d="M100 30 L160 60 L160 105 Q160 145 100 170 Q40 145 40 105 L40 60 Z"
+        fill="#C8102E"/>
+
+  <!-- Raiders "R" text -->
+  <text x="100" y="125" font-family="Arial, sans-serif" font-size="80"
+        font-weight="bold" fill="white" text-anchor="middle">R</text>
+
+  <!-- Soccer ball accent -->
+  <circle cx="100" cy="50" r="8" fill="white"/>
+  <path d="M100 42 L100 58 M92 50 L108 50" stroke="#1B2947" stroke-width="2"/>
+</svg>
