@@ -103,11 +103,11 @@ export function calculateGameStats(
     const minutes = getMinutesBetweenRotations(startTime, endTime, pausePeriods);
 
     // Add minutes to each player's position
-    Object.entries(currentRotation.assignments).forEach(([playerId, position]) => {
+    Object.entries(currentRotation.assignments).forEach(([playerId, playerPosition]) => {
       const stats = playerStatsMap.get(playerId);
       if (stats) {
-        stats.minutesByPosition[position] += minutes;
-        if (position !== 'BENCH') {
+        stats.minutesByPosition[playerPosition.position] += minutes;
+        if (playerPosition.position !== 'BENCH') {
           stats.totalMinutes += minutes;
         }
       }
@@ -129,11 +129,11 @@ export function calculateGameStats(
     if (now > gameStartTime) {
       const minutes = getMinutesBetweenRotations(startTime, now, pausePeriods);
 
-      Object.entries(lastRotation.assignments).forEach(([playerId, position]) => {
+      Object.entries(lastRotation.assignments).forEach(([playerId, playerPosition]) => {
         const stats = playerStatsMap.get(playerId);
         if (stats) {
-          stats.minutesByPosition[position] += minutes;
-          if (position !== 'BENCH') {
+          stats.minutesByPosition[playerPosition.position] += minutes;
+          if (playerPosition.position !== 'BENCH') {
             stats.totalMinutes += minutes;
           }
         }

@@ -40,8 +40,8 @@ export default function FieldFormation({
     if (swap) {
       // Determine direction based on swap partner's position
       const partnerId = swap.player1Id === playerId ? swap.player2Id : swap.player1Id;
-      const partnerPosition = assignments[partnerId];
-      const isPartnerOnBench = partnerPosition === 'BENCH';
+      const partnerPlayerPos = assignments[partnerId];
+      const isPartnerOnBench = partnerPlayerPos.position === 'BENCH';
       // If partner is on bench, this field player is going to bench
       // If partner is also on field, it's a field-to-field position swap (no direction indicator)
       return { isStaged: true, direction: isPartnerOnBench ? 'toBench' : undefined };
@@ -49,12 +49,18 @@ export default function FieldFormation({
     return { isStaged: false };
   };
 
-  // Get players by position
+  // Get players by position, sorted by slot index
   const getPlayersAtPosition = (position: Position): Player[] => {
-    return Object.entries(assignments)
-      .filter(([, pos]) => pos === position)
-      .map(([playerId]) => players.find((p) => p.id === playerId))
-      .filter((p): p is Player => p !== undefined);
+    const playersWithSlots = Object.entries(assignments)
+      .filter(([, playerPos]) => playerPos.position === position)
+      .map(([playerId, playerPos]) => ({
+        player: players.find((p) => p.id === playerId),
+        slot: playerPos.slot,
+      }))
+      .filter((item): item is { player: Player; slot: number } => item.player !== undefined)
+      .sort((a, b) => a.slot - b.slot); // Sort by slot index
+
+    return playersWithSlots.map(item => item.player);
   };
 
   const gk = getPlayersAtPosition('GK')[0];

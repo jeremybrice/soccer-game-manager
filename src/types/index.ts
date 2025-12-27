@@ -10,14 +10,28 @@
 // ============================================================================
 
 /**
- * Field positions in our 3-3-2-1 formation
+ * Field position categories
  * GK: Goalkeeper (1 player)
  * DEF: Defense (3 players)
- * MID: Midfield (3 players)
- * FWD: Forward/Striker (2 players)
+ * MID: Midfield (3-4 players depending on formation)
+ * FWD: Forward/Striker (1-2 players depending on formation)
  * BENCH: Not currently playing (5 players when full team of 14)
  */
 export type Position = 'GK' | 'DEF' | 'MID' | 'FWD' | 'BENCH';
+
+/**
+ * Player position with specific slot information
+ * Enables tracking exact position within a category (e.g., LM vs CM vs RM)
+ * Critical for custom formations and precise player placement
+ */
+export interface PlayerPosition {
+  position: Position;  // Category: GK, DEF, MID, FWD, or BENCH
+  slot: number;        // Index within category (0-based)
+                       // DEF: 0=LD, 1=CD, 2=RD
+                       // MID: 0=LM, 1=CM, 2=RM (Formation A) or 0=LM, 1=CLM, 2=CRM, 3=RM (Formation B)
+                       // FWD: 0=LF, 1=RF (Formation A) or 0=CF (Formation B)
+                       // BENCH: 0-4 (tracks bench order for rotation strategies)
+}
 
 /**
  * Formation configuration - immutable structures
@@ -105,10 +119,19 @@ export interface Rotation {
 }
 
 /**
- * Maps player IDs to their positions
+ * Maps player IDs to their positions with slot information
  * Invariant: Exactly 9 players on field positions, rest on BENCH
+ * Each player has a specific slot within their position category
+ *
+ * Example:
+ * {
+ *   "player1": { position: "MID", slot: 0 },  // LM (Left Midfielder)
+ *   "player2": { position: "MID", slot: 1 },  // CM (Center Midfielder)
+ *   "player3": { position: "MID", slot: 2 },  // RM (Right Midfielder)
+ *   "player4": { position: "BENCH", slot: 0 } // First on bench
+ * }
  */
-export type PositionAssignments = Record<string, Position>;
+export type PositionAssignments = Record<string, PlayerPosition>;
 
 // ============================================================================
 // Statistics Types
@@ -196,6 +219,47 @@ export const getPositionName = (pos: Position): string => {
  */
 export const getPositionShort = (pos: Position): string => {
   return pos;
+};
+
+/**
+ * Get slot label for a specific position and slot index
+ * Returns the display label (e.g., "LM", "CM", "RM") based on formation
+ */
+export const getSlotLabel = (
+  position: Position,
+  slot: number,
+  formation: FormationType
+): string => {
+  if (position === 'GK') return 'GK';
+  if (position === 'BENCH') return 'BENCH';
+
+  if (position === 'DEF') {
+    const labels = ['LD', 'CD', 'RD'];
+    return labels[slot] || `DEF${slot}`;
+  }
+
+  if (position === 'MID') {
+    const labels = formation === 'A'
+      ? ['LM', 'CM', 'RM']
+      : ['LM', 'CLM', 'CRM', 'RM'];
+    return labels[slot] || `MID${slot}`;
+  }
+
+  if (position === 'FWD') {
+    const labels = formation === 'A'
+      ? ['LF', 'RF']
+      : ['CF'];
+    return labels[slot] || `FWD${slot}`;
+  }
+
+  return position;
+};
+
+/**
+ * Create a PlayerPosition object
+ */
+export const createPlayerPosition = (position: Position, slot: number): PlayerPosition => {
+  return { position, slot };
 };
 
 // ============================================================================

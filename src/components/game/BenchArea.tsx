@@ -32,7 +32,7 @@ export default function BenchArea({
 
   // Get players on bench
   const benchPlayers = Object.entries(assignments)
-    .filter(([, pos]) => pos === 'BENCH')
+    .filter(([, playerPos]) => playerPos.position === 'BENCH')
     .map(([playerId]) => players.find((p) => p.id === playerId))
     .filter((p): p is Player => p !== undefined);
 
@@ -42,8 +42,8 @@ export default function BenchArea({
     if (swap) {
       // Determine direction based on swap partner's position
       const partnerId = swap.player1Id === playerId ? swap.player2Id : swap.player1Id;
-      const partnerPosition = assignments[partnerId];
-      const isPartnerOnField = partnerPosition !== 'BENCH';
+      const partnerPlayerPos = assignments[partnerId];
+      const isPartnerOnField = partnerPlayerPos.position !== 'BENCH';
       // If partner is on field, this bench player is going to field
       return { isStaged: true, direction: isPartnerOnField ? 'toField' : undefined };
     }

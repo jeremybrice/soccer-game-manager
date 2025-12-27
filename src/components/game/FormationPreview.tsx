@@ -6,14 +6,14 @@
  */
 
 import { useState } from 'react';
-import type { Player, Position, PositionAssignments, FormationType } from '../../types';
-import { FORMATION_A, FORMATION_B } from '../../types';
+import type { Player, Position, PlayerPosition, PositionAssignments, FormationType } from '../../types';
+import { FORMATION_A, FORMATION_B, createPlayerPosition, getSlotLabel } from '../../types';
 
 interface FormationPreviewProps {
   formation: FormationType;
   assignments: PositionAssignments;
   players: Player[];
-  onPlayerAssignment: (playerId: string, position: Position) => void;
+  onPlayerAssignment: (playerId: string, playerPosition: PlayerPosition) => void;
 }
 
 export default function FormationPreview({
@@ -22,38 +22,55 @@ export default function FormationPreview({
   players,
   onPlayerAssignment,
 }: FormationPreviewProps) {
-  const [selectedPosition, setSelectedPosition] = useState<Position | null>(null);
+  // Track both position and slot when user clicks
+  const [selectedSlot, setSelectedSlot] = useState<{ position: Position; slot: number } | null>(null);
 
   const formationConfig = formation === 'A' ? FORMATION_A : FORMATION_B;
 
-  // Get players assigned to a position
-  const getPlayersAtPosition = (position: Position): Player[] => {
-    return players.filter(p => assignments[p.id] === position);
+  // Get players assigned to a specific position, sorted by slot
+  const getPlayersAtPosition = (position: Position): (Player | null)[] => {
+    const slotCount = formationConfig[position];
+    const result: (Player | null)[] = Array(slotCount).fill(null);
+
+    // Fill slots with assigned players
+    players.forEach(player => {
+      const playerPos = assignments[player.id];
+      if (playerPos && playerPos.position === position) {
+        result[playerPos.slot] = player;
+      }
+    });
+
+    return result;
   };
 
   // Get players not assigned to field positions (bench + unassigned)
   const getAvailablePlayers = (): Player[] => {
-    return players.filter(p => !assignments[p.id] || assignments[p.id] === 'BENCH');
+    return players.filter(p => {
+      const playerPos = assignments[p.id];
+      return !playerPos || playerPos.position === 'BENCH';
+    });
   };
 
-  const handlePositionClick = (position: Position) => {
+  const handlePositionClick = (position: Position, slot: number) => {
     if (position === 'BENCH') return; // Don't allow selecting bench
-    setSelectedPosition(position);
+    setSelectedSlot({ position, slot });
   };
 
   const handlePlayerClick = (player: Player) => {
-    if (!selectedPosition) {
-      // If no position selected, show which position this player is at
+    if (!selectedSlot) {
+      // If no slot selected, show which position this player is at
       return;
     }
 
-    // Assign player to selected position
-    onPlayerAssignment(player.id, selectedPosition);
-    setSelectedPosition(null);
+    // Assign player to selected position and slot
+    onPlayerAssignment(player.id, createPlayerPosition(selectedSlot.position, selectedSlot.slot));
+    setSelectedSlot(null);
   };
 
   const handleRemovePlayer = (playerId: string) => {
-    onPlayerAssignment(playerId, 'BENCH');
+    // Send to bench at slot 0 (bench order can be managed later)
+    const benchPlayers = getPlayersAtPosition('BENCH').filter(p => p !== null).length;
+    onPlayerAssignment(playerId, createPlayerPosition('BENCH', benchPlayers));
   };
 
   // Position layout helpers
@@ -83,11 +100,11 @@ export default function FormationPreview({
     <div className="bg-white/90 backdrop-blur rounded-xl p-4 shadow-lg">
       <h3 className="font-bold text-gray-900 mb-3">Player Assignment</h3>
 
-      {selectedPosition && (
+      {selectedSlot && (
         <div className="bg-raiders-red text-white px-4 py-3 rounded-lg mb-4 font-semibold text-center">
-          Assigning to {selectedPosition} - Tap a player below
+          Assigning to {getSlotLabel(selectedSlot.position, selectedSlot.slot, formation)} - Tap a player below
           <button
-            onClick={() => setSelectedPosition(null)}
+            onClick={() => setSelectedSlot(null)}
             className="ml-3 px-3 py-1 bg-white/20 hover:bg-white/30 rounded text-sm"
           >
             Cancel
@@ -115,9 +132,9 @@ export default function FormationPreview({
                   key={`FWD-${index}`}
                   position="FWD"
                   label={getPositionLabel('FWD', index)}
-                  player={player}
-                  isSelected={selectedPosition === 'FWD'}
-                  onPositionClick={() => handlePositionClick('FWD')}
+                  player={player ?? undefined}
+                  isSelected={selectedSlot?.position === 'FWD' && selectedSlot?.slot === index}
+                  onPositionClick={() => handlePositionClick('FWD', index)}
                   onRemovePlayer={player ? () => handleRemovePlayer(player.id) : undefined}
                 />
               );
@@ -135,9 +152,9 @@ export default function FormationPreview({
                   key={`MID-${index}`}
                   position="MID"
                   label={getPositionLabel('MID', index)}
-                  player={player}
-                  isSelected={selectedPosition === 'MID'}
-                  onPositionClick={() => handlePositionClick('MID')}
+                  player={player ?? undefined}
+                  isSelected={selectedSlot?.position === 'MID' && selectedSlot?.slot === index}
+                  onPositionClick={() => handlePositionClick('MID', index)}
                   onRemovePlayer={player ? () => handleRemovePlayer(player.id) : undefined}
                 />
               );
@@ -155,9 +172,9 @@ export default function FormationPreview({
                   key={`DEF-${index}`}
                   position="DEF"
                   label={getPositionLabel('DEF', index)}
-                  player={player}
-                  isSelected={selectedPosition === 'DEF'}
-                  onPositionClick={() => handlePositionClick('DEF')}
+                  player={player ?? undefined}
+                  isSelected={selectedSlot?.position === 'DEF' && selectedSlot?.slot === index}
+                  onPositionClick={() => handlePositionClick('DEF', index)}
                   onRemovePlayer={player ? () => handleRemovePlayer(player.id) : undefined}
                 />
               );
@@ -175,9 +192,9 @@ export default function FormationPreview({
                   key={`GK-${index}`}
                   position="GK"
                   label="GK"
-                  player={player}
-                  isSelected={selectedPosition === 'GK'}
-                  onPositionClick={() => handlePositionClick('GK')}
+                  player={player ?? undefined}
+                  isSelected={selectedSlot?.position === 'GK' && selectedSlot?.slot === index}
+                  onPositionClick={() => handlePositionClick('GK', index)}
                   onRemovePlayer={player ? () => handleRemovePlayer(player.id) : undefined}
                 />
               );
@@ -199,9 +216,9 @@ export default function FormationPreview({
               <button
                 key={player.id}
                 onClick={() => handlePlayerClick(player)}
-                disabled={!selectedPosition}
+                disabled={!selectedSlot}
                 className={`px-3 py-2 rounded-lg font-semibold text-sm transition ${
-                  selectedPosition
+                  selectedSlot
                     ? 'bg-raiders-red text-white hover:bg-raiders-red-dark cursor-pointer'
                     : 'bg-gray-200 text-gray-600 cursor-not-allowed'
                 }`}

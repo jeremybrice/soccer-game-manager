@@ -9,6 +9,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAppStore } from '../../store';
 import { formatTime } from '../../utils/stats';
 import type { GameSession, TimerState, PausePeriod } from '../../types';
+import { getSlotLabel } from '../../types';
 import FieldFormation from './FieldFormation';
 import FormationSetupView from './FormationSetupView';
 import StagedSwapsPanel from './StagedSwapsPanel';
@@ -61,20 +62,20 @@ const calculatePlayerMinutesInCurrentZone = (
 
   const rotations = currentGame.rotations;
   const currentRotation = rotations[rotations.length - 1];
-  const currentPosition = currentRotation.assignments[playerId];
+  const currentPlayerPosition = currentRotation.assignments[playerId];
 
-  if (!currentPosition) return 0;
+  if (!currentPlayerPosition) return 0;
 
-  const isOnField = currentPosition !== 'BENCH';
+  const isOnField = currentPlayerPosition.position !== 'BENCH';
 
   // Find when player last crossed the field ↔ bench boundary
   let startTime = currentRotation.timestamp.getTime();
 
   for (let i = rotations.length - 2; i >= 0; i--) {
-    const prevPosition = rotations[i].assignments[playerId];
-    if (!prevPosition) continue;
+    const prevPlayerPosition = rotations[i].assignments[playerId];
+    if (!prevPlayerPosition) continue;
 
-    const wasOnField = prevPosition !== 'BENCH';
+    const wasOnField = prevPlayerPosition.position !== 'BENCH';
 
     // If zone changed (field ↔ bench), we found the transition
     if (isOnField !== wasOnField) {
@@ -117,6 +118,7 @@ export default function GameView() {
     unstageSwap,
     executeStagedSwaps,
     swapPlayers,
+    selectedFormation,
   } = useAppStore();
 
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
@@ -137,12 +139,12 @@ export default function GameView() {
     if (!currentGame) return;
 
     players.forEach((player) => {
-      const position = currentAssignments[player.id];
+      const playerPosition = currentAssignments[player.id];
       const minutes = playerZoneMinutes[player.id] || 0;
 
       // Check if field player has hit 15-minute threshold
       if (
-        position !== 'BENCH' &&
+        playerPosition && playerPosition.position !== 'BENCH' &&
         minutes >= 15 &&
         !alertedPlayers.has(player.id)
       ) {
@@ -158,7 +160,7 @@ export default function GameView() {
       }
 
       // Clear alert if player goes to bench (allow re-alert if they return to field later)
-      if (position === 'BENCH' && alertedPlayers.has(player.id)) {
+      if (playerPosition && playerPosition.position === 'BENCH' && alertedPlayers.has(player.id)) {
         setAlertedPlayers((prev) => {
           const next = new Set(prev);
           next.delete(player.id);
@@ -218,8 +220,13 @@ export default function GameView() {
   const selectedPlayer = selectedPlayerId
     ? players.find((p) => p.id === selectedPlayerId)
     : null;
-  const selectedPlayerPosition = selectedPlayerId
+  const selectedPlayerPos = selectedPlayerId
     ? currentAssignments[selectedPlayerId]
+    : null;
+  const selectedPlayerPosition = selectedPlayerPos
+    ? (selectedPlayerPos.position === 'BENCH'
+        ? 'BENCH'
+        : getSlotLabel(selectedPlayerPos.position, selectedPlayerPos.slot, selectedFormation))
     : null;
 
   return (
