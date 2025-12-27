@@ -7,8 +7,8 @@
 
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../../store';
-import type { Position, PositionAssignments, FormationType } from '../../types';
-import { FORMATION_A, FORMATION_B, MIN_PLAYERS_TO_START, RECOMMENDED_MIN_PLAYERS } from '../../types';
+import type { Position, PlayerPosition, PositionAssignments, FormationType } from '../../types';
+import { FORMATION_A, FORMATION_B, MIN_PLAYERS_TO_START, RECOMMENDED_MIN_PLAYERS, createPlayerPosition } from '../../types';
 import FormationSelector from './FormationSelector';
 import FormationPreview from './FormationPreview';
 
@@ -27,49 +27,58 @@ export default function FormationSetupView() {
     const result: PositionAssignments = {};
     const unassigned = [...playerList];
 
-    // Build position array based on formation
+    // Track slot usage for each position
     const formationConfig = formation === 'A' ? FORMATION_A : FORMATION_B;
-    const positions: Position[] = [
-      ...Array(formationConfig.GK).fill('GK'),
-      ...Array(formationConfig.DEF).fill('DEF'),
-      ...Array(formationConfig.MID).fill('MID'),
-      ...Array(formationConfig.FWD).fill('FWD'),
-    ];
+    const slotCounters: Record<Position, number> = {
+      GK: 0,
+      DEF: 0,
+      MID: 0,
+      FWD: 0,
+      BENCH: 0,
+    };
+
+    const assignPlayerToPosition = (playerId: string, position: Position) => {
+      const slot = slotCounters[position];
+      result[playerId] = createPlayerPosition(position, slot);
+      slotCounters[position]++;
+    };
 
     // First pass: Assign GK (most critical)
     const gkPlayer = unassigned.find(p => p.preferredPositions[0] === 'GK');
     if (gkPlayer) {
-      result[gkPlayer.id] = 'GK';
+      assignPlayerToPosition(gkPlayer.id, 'GK');
       unassigned.splice(unassigned.indexOf(gkPlayer), 1);
     }
 
     // Second pass: Assign players to their preferred positions
-    positions.slice(1).forEach((position) => {
-      const preferredPlayer = unassigned.find(
-        (p) => p.preferredPositions[0] === position
-      );
-      if (preferredPlayer) {
-        result[preferredPlayer.id] = position;
-        unassigned.splice(unassigned.indexOf(preferredPlayer), 1);
+    const positionOrder: Position[] = ['DEF', 'MID', 'FWD'];
+    positionOrder.forEach((position) => {
+      const needed = formationConfig[position];
+      for (let i = 0; i < needed; i++) {
+        const preferredPlayer = unassigned.find(
+          (p) => p.preferredPositions[0] === position
+        );
+        if (preferredPlayer) {
+          assignPlayerToPosition(preferredPlayer.id, position);
+          unassigned.splice(unassigned.indexOf(preferredPlayer), 1);
+        }
       }
     });
 
     // Third pass: Fill remaining positions with unassigned players
-    positions.forEach((position) => {
-      const assignedCount = Object.values(result).filter(p => p === position).length;
-      const needed = formationConfig[position] - assignedCount;
-
+    positionOrder.forEach((position) => {
+      const needed = formationConfig[position] - slotCounters[position];
       for (let i = 0; i < needed; i++) {
         const nextPlayer = unassigned.shift();
         if (nextPlayer) {
-          result[nextPlayer.id] = position;
+          assignPlayerToPosition(nextPlayer.id, position);
         }
       }
     });
 
     // Put everyone else on bench
     unassigned.forEach((player) => {
-      result[player.id] = 'BENCH';
+      assignPlayerToPosition(player.id, 'BENCH');
     });
 
     return result;
@@ -81,7 +90,7 @@ export default function FormationSetupView() {
   };
 
   const handleStart = async () => {
-    const fieldPlayerCount = Object.values(assignments).filter(p => p !== 'BENCH').length;
+    const fieldPlayerCount = Object.values(assignments).filter(p => p.position !== 'BENCH').length;
 
     if (fieldPlayerCount < MIN_PLAYERS_TO_START) {
       alert(`Please assign at least ${MIN_PLAYERS_TO_START} players (1 GK + 6 field players) to start`);
@@ -89,7 +98,7 @@ export default function FormationSetupView() {
     }
 
     // Check if GK is assigned
-    const hasGK = Object.values(assignments).some(p => p === 'GK');
+    const hasGK = Object.values(assignments).some(p => p.position === 'GK');
     if (!hasGK) {
       alert('A goalkeeper must be assigned before starting the game');
       return;
@@ -98,15 +107,15 @@ export default function FormationSetupView() {
     await startGame(assignments);
   };
 
-  const handlePlayerAssignment = (playerId: string, position: Position) => {
+  const handlePlayerAssignment = (playerId: string, playerPosition: PlayerPosition) => {
     setAssignments(prev => ({
       ...prev,
-      [playerId]: position,
+      [playerId]: playerPosition,
     }));
   };
 
-  const fieldPlayerCount = Object.values(assignments).filter(p => p !== 'BENCH').length;
-  const hasGK = Object.values(assignments).some(p => p === 'GK');
+  const fieldPlayerCount = Object.values(assignments).filter(p => p.position !== 'BENCH').length;
+  const hasGK = Object.values(assignments).some(p => p.position === 'GK');
   const canStart = fieldPlayerCount >= MIN_PLAYERS_TO_START && hasGK;
   const showWarning = fieldPlayerCount < RECOMMENDED_MIN_PLAYERS && fieldPlayerCount >= MIN_PLAYERS_TO_START;
 
@@ -154,7 +163,7 @@ export default function FormationSetupView() {
               </div>
               <div>
                 <div className="text-3xl font-bold text-gray-500">
-                  {Object.values(assignments).filter(p => p === 'BENCH').length}
+                  {Object.values(assignments).filter(p => p.position === 'BENCH').length}
                 </div>
                 <div className="text-sm text-gray-600 font-medium">On Bench</div>
               </div>

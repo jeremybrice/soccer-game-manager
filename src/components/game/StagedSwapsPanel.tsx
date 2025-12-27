@@ -6,6 +6,7 @@
  */
 
 import type { Player, StagedSwap, PositionAssignments } from '../../types';
+import { getSlotLabel } from '../../types';
 import { useAppStore } from '../../store';
 
 interface StagedSwapsPanelProps {
@@ -31,38 +32,14 @@ export default function StagedSwapsPanel({
     return players.find(p => p.id === playerId);
   };
 
-  // Get position label for a player
-  const getPositionLabel = (playerId: string): string => {
-    const position = assignments[playerId];
-    if (!position) return '?';
-    if (position === 'BENCH') return 'B';
+  // Get position label for a player using slot information
+  const getPositionLabelForPlayer = (playerId: string): string => {
+    const playerPosition = assignments[playerId];
+    if (!playerPosition) return '?';
+    if (playerPosition.position === 'BENCH') return 'B';
 
-    // Get all players at this position type
-    const playersAtPosition = Object.entries(assignments)
-      .filter(([, pos]) => pos === position)
-      .map(([id]) => id);
-
-    const playerIndex = playersAtPosition.indexOf(playerId);
-
-    // Position labels based on formation
-    if (position === 'GK') return 'GK';
-    if (position === 'DEF') {
-      const defLabels = ['LD', 'CD', 'RD'];
-      return defLabels[playerIndex] || 'D';
-    }
-    if (position === 'MID') {
-      const midLabels = selectedFormation === 'A'
-        ? ['LM', 'CM', 'RM']
-        : ['LM', 'CLM', 'CRM', 'RM'];
-      return midLabels[playerIndex] || 'M';
-    }
-    if (position === 'FWD') {
-      const fwdLabels = selectedFormation === 'A'
-        ? ['LF', 'RF']
-        : ['CF'];
-      return fwdLabels[playerIndex] || 'F';
-    }
-    return '?';
+    // Use the slot-aware helper function
+    return getSlotLabel(playerPosition.position, playerPosition.slot, selectedFormation);
   };
 
   return (
@@ -81,8 +58,8 @@ export default function StagedSwapsPanel({
 
             if (!player1 || !player2) return null;
 
-            const pos1 = getPositionLabel(swap.player1Id);
-            const pos2 = getPositionLabel(swap.player2Id);
+            const pos1 = getPositionLabelForPlayer(swap.player1Id);
+            const pos2 = getPositionLabelForPlayer(swap.player2Id);
 
             return (
               <div

@@ -27,6 +27,9 @@ export interface UserPreference {
  * v1: Initial schema
  * v2: Added timer state fields to GameSession (timerStartedAt, timerPausedAt, etc.)
  *     Note: No migration needed as fields are optional and IndexedDB stores full objects
+ * v3: Changed PositionAssignments from Record<string, Position> to Record<string, PlayerPosition>
+ *     Position now includes slot information for precise player placement
+ *     Migration: Clears all existing games and rotations (pilot testing phase)
  */
 export class SoccerDatabase extends Dexie {
   players!: Table<Player, string>;
@@ -51,6 +54,22 @@ export class SoccerDatabase extends Dexie {
       rotations: 'id, timestamp, gameId',
       userPreferences: 'key, lastUpdated',
     });
+
+    // Schema version 3: Add slot-aware positions
+    this.version(3)
+      .stores({
+        players: 'id, number, isActive',
+        games: 'id, date, isActive',
+        rotations: 'id, timestamp, gameId',
+        userPreferences: 'key, lastUpdated',
+      })
+      .upgrade(async (tx) => {
+        // Clear existing games and rotations due to breaking change in PositionAssignments structure
+        // Players are preserved
+        console.log('[DB Migration v3] Clearing games and rotations for slot-aware position upgrade');
+        await tx.table('games').clear();
+        await tx.table('rotations').clear();
+      });
   }
 
   /**

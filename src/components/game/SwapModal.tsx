@@ -6,6 +6,7 @@
  */
 
 import type { Player, PositionAssignments, StagedSwap } from '../../types';
+import { getSlotLabel } from '../../types';
 import { useAppStore } from '../../store';
 
 interface SwapModalProps {
@@ -35,10 +36,10 @@ export default function SwapModal({
 
   // Separate field and bench players (excluding selected player)
   const fieldPlayers = allPlayers.filter(
-    (p) => p.id !== selectedPlayer.id && assignments[p.id] !== 'BENCH'
+    (p) => p.id !== selectedPlayer.id && assignments[p.id]?.position !== 'BENCH'
   );
   const benchPlayers = allPlayers.filter(
-    (p) => p.id !== selectedPlayer.id && assignments[p.id] === 'BENCH'
+    (p) => p.id !== selectedPlayer.id && assignments[p.id]?.position === 'BENCH'
   );
 
   const isSelectedOnBench = selectedPlayerPosition === 'BENCH';
@@ -57,38 +58,12 @@ export default function SwapModal({
     );
   };
 
-  // Get position label for a player based on their position and formation
-  const getPositionLabel = (playerId: string): string | undefined => {
-    const position = assignments[playerId];
-    if (!position || position === 'BENCH') return undefined;
+  // Get position label for a player using slot information
+  const getPositionLabelForPlayer = (playerId: string): string | undefined => {
+    const playerPosition = assignments[playerId];
+    if (!playerPosition || playerPosition.position === 'BENCH') return undefined;
 
-    // Get all players at this position type
-    const playersAtPosition = Object.entries(assignments)
-      .filter(([, pos]) => pos === position)
-      .map(([id]) => id);
-
-    const playerIndex = playersAtPosition.indexOf(playerId);
-    if (playerIndex === -1) return undefined;
-
-    // Position labels based on formation
-    if (position === 'GK') return 'GK';
-    if (position === 'DEF') {
-      const defLabels = ['LD', 'CD', 'RD'];
-      return defLabels[playerIndex];
-    }
-    if (position === 'MID') {
-      const midLabels = selectedFormation === 'A'
-        ? ['LM', 'CM', 'RM']
-        : ['LM', 'CLM', 'CRM', 'RM'];
-      return midLabels[playerIndex];
-    }
-    if (position === 'FWD') {
-      const fwdLabels = selectedFormation === 'A'
-        ? ['LF', 'RF']
-        : ['CF'];
-      return fwdLabels[playerIndex];
-    }
-    return undefined;
+    return getSlotLabel(playerPosition.position, playerPosition.slot, selectedFormation);
   };
 
   // All players are valid targets in both modes now
@@ -98,7 +73,7 @@ export default function SwapModal({
   const renderPlayerButton = (player: Player, isOnField: boolean) => {
     const minutes = getPlayerMinutes(player.id);
     const isStaged = isPlayerStaged(player.id);
-    const positionLabel = isOnField ? getPositionLabel(player.id) : undefined;
+    const positionLabel = isOnField ? getPositionLabelForPlayer(player.id) : undefined;
 
     return (
       <button
