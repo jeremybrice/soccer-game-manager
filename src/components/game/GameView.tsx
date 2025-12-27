@@ -129,6 +129,7 @@ export default function GameView() {
 
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [alertedPlayers, setAlertedPlayers] = useState<Set<string>>(new Set());
+  const [showQuarterModal, setShowQuarterModal] = useState(false); // Manual stop modal
 
   // Memoized player calculations - only recalculate when dependencies change
   const playerZoneMinutes = useMemo(() => {
@@ -274,7 +275,15 @@ export default function GameView() {
           </div>
 
           <button
-            onClick={timer.isRunning ? pauseTimer : startTimer}
+            onClick={() => {
+              if (timer.isRunning) {
+                // Show quarter actions modal (stop button)
+                setShowQuarterModal(true);
+              } else {
+                // Resume timer (play button)
+                startTimer();
+              }
+            }}
             disabled={quarterState.isAutoStopped}
             className={`touch-target px-4 py-2 rounded-lg font-semibold ${
               quarterState.isAutoStopped
@@ -282,7 +291,7 @@ export default function GameView() {
                 : 'bg-white/20 hover:bg-white/30'
             }`}
           >
-            {timer.isRunning ? '⏸' : '▶'}
+            {timer.isRunning ? '⏹' : '▶'}
           </button>
         </div>
       </div>
@@ -383,14 +392,29 @@ export default function GameView() {
         />
       )}
 
-      {/* Quarter End Overlay - Shows when quarter auto-stops (v3.1.0) */}
-      {quarterState.isAutoStopped && (
+      {/* Quarter End Overlay - Shows for auto-stop (when paused) or manual stop (v3.1.0) */}
+      {((quarterState.isAutoStopped && !timer.isRunning) || showQuarterModal) && (
         <QuarterEndOverlay
+          mode={quarterState.isAutoStopped ? 'auto-stop' : 'manual-stop'}
           currentQuarter={quarterState.currentQuarter}
           totalQuarters={quarterConfig.totalQuarters}
-          onContinue={continueQuarter}
-          onNextQuarter={startNextQuarter}
-          onEndGame={handleEndGame}
+          onContinue={() => {
+            continueQuarter();
+            setShowQuarterModal(false);
+          }}
+          onPause={() => {
+            pauseTimer();
+            setShowQuarterModal(false);
+          }}
+          onNextQuarter={() => {
+            startNextQuarter();
+            setShowQuarterModal(false);
+          }}
+          onEndGame={() => {
+            setShowQuarterModal(false);
+            handleEndGame();
+          }}
+          onCancel={() => setShowQuarterModal(false)}
         />
       )}
     </div>
