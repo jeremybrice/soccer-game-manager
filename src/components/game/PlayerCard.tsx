@@ -9,20 +9,25 @@ import type { Player } from '../../types';
 
 interface PlayerCardProps {
   player: Player;
-  isSelected: boolean;
-  onClick: () => void;
+  isSelected?: boolean;
+  onClick?: () => void;
   variant?: 'field' | 'bench';
-  minutesAtPosition?: number; // Time in minutes at current position
-  positionLabel?: string; // Specific position label (e.g., "LM", "CD", "RF")
-  benchTime?: number; // Time in minutes on bench (for bench variant)
-  isAlerted?: boolean; // Whether player has triggered 15+ min alert
-  isStaged?: boolean; // Whether player is in a staged swap
-  stagedDirection?: 'toField' | 'toBench'; // Direction of staged swap
+  minutesAtPosition?: number;
+  positionLabel?: string;
+  benchTime?: number;
+  isAlerted?: boolean;
+  isStaged?: boolean;
+  stagedDirection?: 'toField' | 'toBench';
+  // New ghost preview props (v3.2.0)
+  isGhost?: boolean;
+  isFadedOut?: boolean;
+  isDragging?: boolean;
+  isDropTarget?: boolean;
 }
 
 export default function PlayerCard({
   player,
-  isSelected,
+  isSelected = false,
   onClick,
   variant = 'field',
   minutesAtPosition = 0,
@@ -31,10 +36,11 @@ export default function PlayerCard({
   isAlerted = false,
   isStaged = false,
   stagedDirection,
+  isGhost = false,
+  isFadedOut = false,
+  isDragging = false,
+  isDropTarget = false,
 }: PlayerCardProps) {
-  const baseClasses =
-    'touch-target rounded-xl font-bold transform transition-all active:scale-95';
-
   // Get time-based color (only for field players)
   const getTimeBasedColor = (minutes: number): string => {
     if (minutes < 10) return 'bg-green-500 text-white';
@@ -42,9 +48,46 @@ export default function PlayerCard({
     return 'bg-red-500 text-white';
   };
 
+  // Ghost style - dashed border, semi-transparent
+  if (isGhost) {
+    return (
+      <div
+        onClick={onClick}
+        className={`
+          w-20 h-20 rounded-xl flex flex-col items-center justify-center
+          border-2 border-dashed border-white/70 bg-white/20
+          backdrop-blur-sm animate-pulse
+          ${onClick ? 'cursor-pointer active:scale-95' : ''}
+        `}
+      >
+        <div className="text-white/80 text-2xl font-bold">{player.number}</div>
+        <div className="text-white/70 text-xs">{player.name.split(' ')[0]}</div>
+        <div className="text-white/60 text-[8px] font-semibold">INCOMING</div>
+      </div>
+    );
+  }
+
+  // Dragging state - the original card left behind
+  if (isDragging) {
+    return (
+      <div className="w-20 h-20 rounded-xl border-2 border-dashed border-white/40 bg-white/10" />
+    );
+  }
+
+  // Drop target highlight
+  const dropTargetClasses = isDropTarget
+    ? 'ring-4 ring-orange-400 ring-offset-2 ring-offset-field scale-105'
+    : '';
+
+  // Faded out - player is staged to move elsewhere
+  const fadedClasses = isFadedOut ? 'opacity-50' : '';
+
+  const baseClasses =
+    'touch-target rounded-xl font-bold transform transition-all active:scale-95';
+
   const variantClasses =
     isStaged
-      ? 'bg-orange-500 text-white border-4 border-orange-300 shadow-2xl' // Staged swap styling
+      ? 'bg-orange-500 text-white border-4 border-orange-300 shadow-2xl'
       : variant === 'field'
       ? isSelected
         ? 'bg-raiders-red text-white scale-110 shadow-2xl ring-4 ring-raiders-red-light'
@@ -58,7 +101,7 @@ export default function PlayerCard({
   return (
     <button
       onClick={onClick}
-      className={`${baseClasses} ${variantClasses} w-20 h-20 flex flex-col items-center justify-center relative ${
+      className={`${baseClasses} ${variantClasses} ${dropTargetClasses} ${fadedClasses} w-20 h-20 flex flex-col items-center justify-center relative ${
         isAlerted && variant === 'field' && !isStaged ? 'ring-4 ring-yellow-300 ring-offset-2 ring-offset-field' : ''
       }`}
     >
