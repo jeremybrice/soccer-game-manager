@@ -47,8 +47,7 @@ interface AppState {
   // Formation State
   selectedFormation: FormationType;
 
-  // Staged Rotations State
-  planningMode: boolean;
+  // Staged Rotations State (v3.2.0 - always in planning mode, drag-drop)
   stagedSwaps: StagedSwap[];
 
   // Help System State
@@ -204,13 +203,8 @@ interface AppState {
   loadFormationPreference: () => Promise<void>;
 
   // ========================================================================
-  // Staged Rotations Actions
+  // Staged Rotations Actions (v3.2.0 - drag-drop based)
   // ========================================================================
-
-  /**
-   * Toggle planning mode on/off
-   */
-  togglePlanningMode: () => void;
 
   /**
    * Stage a player swap (any two players)
@@ -295,7 +289,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
   quarterConfig: DEFAULT_QUARTER_CONFIG,
   quarterState: DEFAULT_QUARTER_STATE,
   selectedFormation: 'A',
-  planningMode: false,
   stagedSwaps: [],
   isHelpOpen: false,
   activeHelpSection: null,
@@ -1018,16 +1011,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   // ========================================================================
-  // Staged Rotations Management
+  // Staged Rotations Management (v3.2.0 - drag-drop based)
   // ========================================================================
-
-  togglePlanningMode: () => {
-    set((state) => ({
-      planningMode: !state.planningMode,
-      // Clear staged swaps when exiting planning mode
-      stagedSwaps: !state.planningMode ? state.stagedSwaps : [],
-    }));
-  },
 
   stageSwap: (player1Id, player2Id) => {
     set((state) => {
@@ -1119,7 +1104,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
           rotations: [...currentGame.rotations, newRotation],
         },
         stagedSwaps: [], // Clear staged swaps after execution
-        planningMode: false, // Exit planning mode
       });
 
       console.log(`[Store] Executed ${stagedSwaps.length} staged swaps`);

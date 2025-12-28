@@ -6,7 +6,7 @@ Youth soccer coaching PWA for the **St. Pete Raiders U10 Boys Jordan** team. Man
 
 **Core Philosophy**: "Glanceable. One-handed operation. No thinking required."
 
-**Current Version**: v3.1.0 (stored in `package.json:4` and `HomeView.tsx:105`)
+**Current Version**: v3.2.0 (stored in `package.json:4` and `HomeView.tsx:105`)
 
 ---
 
@@ -101,6 +101,41 @@ Game pause affects all timers. Store tracks:
 - `startNextQuarter()`: Advance to next quarter, reset quarter timer
 
 **Component**: `QuarterEndOverlay.tsx` - Modal shown when quarter auto-stops
+
+### Drag-Drop Swap System (v3.2.0)
+
+**Hold and drag to swap players**. All swaps are staged (previewed) before execution.
+
+**Interaction Model**:
+- Hold a player card for 300ms to start dragging
+- Drag to another player (field or bench) to stage a swap
+- Ghost preview shows where players will move
+- Faded player shows they're staged to move away
+- Swipe up on the orange bar to execute all staged swaps
+- Swipe down to clear all staged swaps
+- Tap a ghost to remove that individual swap
+
+**Layout**:
+- Field formation at top (scrollable)
+- Bench always visible at bottom (fixed)
+- SwipeExecuteBar appears when swaps are staged
+- No bottom action buttons (removed in v3.2.0)
+
+**Components**:
+- `DragDropContext.tsx` - React context for drag state management
+- `DraggablePlayerCard.tsx` - Wrapper adding touch drag to PlayerCard
+- `BenchArea.tsx` - Persistent bench footer with drag support
+- `SwipeExecuteBar.tsx` - Swipe gesture to execute/clear swaps
+- `PlayerCard.tsx` - Updated with `isGhost`, `isFadedOut`, `isDragging`, `isDropTarget` props
+
+**State** (`store/index.ts`):
+- `stagedSwaps: StagedSwap[]` - Array of pending swaps
+- `stageSwap()`, `unstageSwap()`, `clearStagedSwaps()`, `executeStagedSwaps()` actions
+- Removed: `planningMode`, `togglePlanningMode` (always in planning mode now)
+
+**Removed Files**:
+- `SwapModal.tsx` - Replaced by drag-drop interaction
+- `StagedSwapsPanel.tsx` - Replaced by ghost preview visualization
 
 ### Time-Based Colors
 
@@ -360,5 +395,6 @@ Minute-level only (sufficient for youth soccer). Updates on component re-renders
 - v2.4.1: Bug fixes - synchronize game clock and player timers at game start
 - v3.0.0: Major refactor - slot-aware formations, improved UI, local Raiders logo
 - v3.1.0: Quarter-based clock management - auto-pause at 15-minute quarter boundaries, overtime tracking (+MM:SS), quarter indicator (Q1-Q4), soft auto-stop with Continue/Next Quarter options
+- v3.2.0: Drag-drop swap system - hold and drag players to stage swaps, ghost previews show future positions, swipe up to execute all swaps, bench always visible, removed bottom action buttons
 
-*Last updated: 2025-12-27 (v3.1.0)*
+*Last updated: 2025-12-28 (v3.2.0)*
