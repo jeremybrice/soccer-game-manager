@@ -41,14 +41,14 @@ export default function PlayerCard({
   isDragging = false,
   isDropTarget = false,
 }: PlayerCardProps) {
-  // Get time-based color (only for field players)
+  // Get time-based color (for field and bench players)
   const getTimeBasedColor = (minutes: number): string => {
     if (minutes < 10) return 'bg-green-500 text-white';
     if (minutes < 15) return 'bg-yellow-400 text-gray-900';
     return 'bg-red-500 text-white';
   };
 
-  // Ghost style - dashed border, more solid for clarity
+  // Ghost style - dashed border, black text for clarity
   if (isGhost) {
     return (
       <div
@@ -60,9 +60,9 @@ export default function PlayerCard({
           ${onClick ? 'cursor-pointer active:scale-95' : ''}
         `}
       >
-        <div className="text-white text-2xl font-bold">{player.number}</div>
-        <div className="text-white/95 text-xs">{player.name.split(' ')[0]}</div>
-        <div className="text-white/90 text-[8px] font-semibold">INCOMING</div>
+        <div className="text-gray-900 text-2xl font-bold">{player.number}</div>
+        <div className="text-gray-900 text-xs">{player.name.split(' ')[0]}</div>
+        <div className="text-gray-800 text-[8px] font-semibold">INCOMING</div>
       </div>
     );
   }
@@ -96,6 +96,8 @@ export default function PlayerCard({
           }`
       : isSelected
       ? 'bg-raiders-red text-white scale-110 shadow-2xl ring-4 ring-raiders-red-light'
+      : benchTime > 0
+      ? `${getTimeBasedColor(benchTime)} shadow-md hover:shadow-lg`
       : 'bg-white/90 text-gray-900 shadow-md hover:shadow-lg';
 
   return (
