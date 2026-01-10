@@ -2,7 +2,7 @@
  * Game View - Live Game Management
  *
  * Philosophy: Glanceable. One-handed operation. No thinking required.
- * Drag players to swap. Ghost preview shows what will happen.
+ * Tap players to swap. Ghost preview shows what will happen.
  * Swipe up to execute all staged swaps.
  */
 
@@ -15,7 +15,6 @@ import BenchArea from './BenchArea';
 import FormationSetupView from './FormationSetupView';
 import SwipeExecuteBar from './SwipeExecuteBar';
 import QuarterEndOverlay from './QuarterEndOverlay';
-import { DragDropProvider } from './DragDropContext';
 
 // ============================================================================
 // Helper Functions (Outside Component to Prevent Recreation)
@@ -118,6 +117,7 @@ export default function GameView() {
 
   const [alertedPlayers, setAlertedPlayers] = useState<Set<string>>(new Set());
   const [showQuarterModal, setShowQuarterModal] = useState(false);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
 
   // Memoized player calculations
   const playerZoneMinutes = useMemo(() => {
@@ -181,14 +181,23 @@ export default function GameView() {
     unstageSwap(swapId);
   };
 
-  // Handle swap staged via drag-drop
-  const handleSwapStaged = (player1Id: string, player2Id: string) => {
-    stageSwap(player1Id, player2Id);
+  // Handle player tap - tap-to-select workflow
+  const handlePlayerTap = (playerId: string) => {
+    if (selectedPlayerId === null) {
+      // First tap - select this player
+      setSelectedPlayerId(playerId);
+    } else if (selectedPlayerId === playerId) {
+      // Tapped same player - deselect
+      setSelectedPlayerId(null);
+    } else {
+      // Second tap - stage swap between selected and this player
+      stageSwap(selectedPlayerId, playerId);
+      setSelectedPlayerId(null);
+    }
   };
 
   return (
-    <DragDropProvider onSwapStaged={handleSwapStaged}>
-      <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
         {/* Header with Quarter Timer (v3.1.0) */}
         <div className="bg-field text-white px-4 py-3 shadow-lg">
           <div className="flex items-center justify-between">
@@ -260,9 +269,9 @@ export default function GameView() {
                 <div className="w-3 h-3 rounded-full bg-red-500"></div>
                 <span className="text-white/90 text-xs font-medium">&gt;15m</span>
               </div>
-              {/* Drag hint */}
+              {/* Tap hint */}
               <div className="flex items-center space-x-1 border-l border-white/30 pl-3">
-                <span className="text-white/70 text-xs">Hold & drag to swap</span>
+                <span className="text-white/70 text-xs">Tap to swap</span>
               </div>
             </div>
 
@@ -272,6 +281,8 @@ export default function GameView() {
               getPlayerMinutes={(id) => playerZoneMinutes[id] || 0}
               alertedPlayers={alertedPlayers}
               stagedSwaps={stagedSwaps}
+              selectedPlayerId={selectedPlayerId}
+              onPlayerTap={handlePlayerTap}
               onGhostTap={handleGhostTap}
             />
           </div>
@@ -281,7 +292,9 @@ export default function GameView() {
             players={players}
             assignments={currentAssignments}
             stagedSwaps={stagedSwaps}
+            selectedPlayerId={selectedPlayerId}
             getPlayerMinutes={(id) => playerZoneMinutes[id] || 0}
+            onPlayerTap={handlePlayerTap}
             onGhostTap={handleGhostTap}
           />
 
@@ -321,6 +334,5 @@ export default function GameView() {
           />
         )}
       </div>
-    </DragDropProvider>
   );
 }

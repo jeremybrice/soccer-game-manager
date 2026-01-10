@@ -3,13 +3,13 @@
  *
  * Philosophy: Visual clarity. The formation should mirror reality.
  * Portrait layout: Forwards at top, GK at bottom (attacking downward).
- * Drag-drop enabled for staging swaps with ghost previews.
+ * Tap-to-select enabled for staging swaps with ghost previews.
  */
 
 import type { Player, Position, PositionAssignments, StagedSwap } from '../../types';
 import { FORMATION_A, FORMATION_B } from '../../types';
 import { useAppStore } from '../../store';
-import DraggablePlayerCard from './DraggablePlayerCard';
+import PlayerCard from './PlayerCard';
 
 interface FieldFormationProps {
   assignments: PositionAssignments;
@@ -17,6 +17,8 @@ interface FieldFormationProps {
   getPlayerMinutes: (playerId: string) => number;
   alertedPlayers: Set<string>;
   stagedSwaps: StagedSwap[];
+  selectedPlayerId: string | null;
+  onPlayerTap: (playerId: string) => void;
   onGhostTap: (swapId: string) => void;
 }
 
@@ -26,6 +28,8 @@ export default function FieldFormation({
   getPlayerMinutes,
   alertedPlayers,
   stagedSwaps,
+  selectedPlayerId,
+  onPlayerTap,
   onGhostTap,
 }: FieldFormationProps) {
   const { selectedFormation } = useAppStore();
@@ -122,17 +126,34 @@ export default function FieldFormation({
           {forwards.map((player, index) => {
             const { isFadedOut, ghostPlayer, swapId } = getPlayerSwapInfo(player.id);
             return (
-              <DraggablePlayerCard
-                key={player.id}
-                player={player}
-                variant="field"
-                minutesAtPosition={getPlayerMinutes(player.id)}
-                positionLabel={forwardLabels[index]}
-                isAlerted={alertedPlayers.has(player.id)}
-                isFadedOut={isFadedOut}
-                ghostPlayer={ghostPlayer}
-                onGhostTap={swapId ? () => onGhostTap(swapId) : undefined}
-              />
+              <div key={player.id} className="relative">
+                <PlayerCard
+                  player={player}
+                  variant="field"
+                  minutesAtPosition={getPlayerMinutes(player.id)}
+                  positionLabel={forwardLabels[index]}
+                  isAlerted={alertedPlayers.has(player.id)}
+                  isSelected={selectedPlayerId === player.id}
+                  isFadedOut={isFadedOut}
+                  onClick={() => onPlayerTap(player.id)}
+                />
+                {/* Ghost overlay - shows incoming player */}
+                {ghostPlayer && (
+                  <div
+                    className="absolute inset-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (swapId) onGhostTap(swapId);
+                    }}
+                  >
+                    <PlayerCard
+                      player={ghostPlayer}
+                      isGhost={true}
+                      onClick={swapId ? () => onGhostTap(swapId) : undefined}
+                    />
+                  </div>
+                )}
+              </div>
             );
           })}
           {/* Fill empty spots */}
@@ -154,17 +175,34 @@ export default function FieldFormation({
           {midfielders.map((player, index) => {
             const { isFadedOut, ghostPlayer, swapId } = getPlayerSwapInfo(player.id);
             return (
-              <DraggablePlayerCard
-                key={player.id}
-                player={player}
-                variant="field"
-                minutesAtPosition={getPlayerMinutes(player.id)}
-                positionLabel={midfieldLabels[index]}
-                isAlerted={alertedPlayers.has(player.id)}
-                isFadedOut={isFadedOut}
-                ghostPlayer={ghostPlayer}
-                onGhostTap={swapId ? () => onGhostTap(swapId) : undefined}
-              />
+              <div key={player.id} className="relative">
+                <PlayerCard
+                  player={player}
+                  variant="field"
+                  minutesAtPosition={getPlayerMinutes(player.id)}
+                  positionLabel={midfieldLabels[index]}
+                  isAlerted={alertedPlayers.has(player.id)}
+                  isSelected={selectedPlayerId === player.id}
+                  isFadedOut={isFadedOut}
+                  onClick={() => onPlayerTap(player.id)}
+                />
+                {/* Ghost overlay - shows incoming player */}
+                {ghostPlayer && (
+                  <div
+                    className="absolute inset-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (swapId) onGhostTap(swapId);
+                    }}
+                  >
+                    <PlayerCard
+                      player={ghostPlayer}
+                      isGhost={true}
+                      onClick={swapId ? () => onGhostTap(swapId) : undefined}
+                    />
+                  </div>
+                )}
+              </div>
             );
           })}
           {/* Fill empty spots */}
@@ -186,17 +224,34 @@ export default function FieldFormation({
           {defenders.map((player, index) => {
             const { isFadedOut, ghostPlayer, swapId } = getPlayerSwapInfo(player.id);
             return (
-              <DraggablePlayerCard
-                key={player.id}
-                player={player}
-                variant="field"
-                minutesAtPosition={getPlayerMinutes(player.id)}
-                positionLabel={defenseLabels[index]}
-                isAlerted={alertedPlayers.has(player.id)}
-                isFadedOut={isFadedOut}
-                ghostPlayer={ghostPlayer}
-                onGhostTap={swapId ? () => onGhostTap(swapId) : undefined}
-              />
+              <div key={player.id} className="relative">
+                <PlayerCard
+                  player={player}
+                  variant="field"
+                  minutesAtPosition={getPlayerMinutes(player.id)}
+                  positionLabel={defenseLabels[index]}
+                  isAlerted={alertedPlayers.has(player.id)}
+                  isSelected={selectedPlayerId === player.id}
+                  isFadedOut={isFadedOut}
+                  onClick={() => onPlayerTap(player.id)}
+                />
+                {/* Ghost overlay - shows incoming player */}
+                {ghostPlayer && (
+                  <div
+                    className="absolute inset-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (swapId) onGhostTap(swapId);
+                    }}
+                  >
+                    <PlayerCard
+                      player={ghostPlayer}
+                      isGhost={true}
+                      onClick={swapId ? () => onGhostTap(swapId) : undefined}
+                    />
+                  </div>
+                )}
+              </div>
             );
           })}
           {/* Fill empty spots */}
@@ -219,16 +274,34 @@ export default function FieldFormation({
             (() => {
               const { isFadedOut, ghostPlayer, swapId } = getPlayerSwapInfo(gk.id);
               return (
-                <DraggablePlayerCard
-                  player={gk}
-                  variant="field"
-                  minutesAtPosition={getPlayerMinutes(gk.id)}
-                  positionLabel="GK"
-                  isAlerted={alertedPlayers.has(gk.id)}
-                  isFadedOut={isFadedOut}
-                  ghostPlayer={ghostPlayer}
-                  onGhostTap={swapId ? () => onGhostTap(swapId) : undefined}
-                />
+                <div className="relative">
+                  <PlayerCard
+                    player={gk}
+                    variant="field"
+                    minutesAtPosition={getPlayerMinutes(gk.id)}
+                    positionLabel="GK"
+                    isAlerted={alertedPlayers.has(gk.id)}
+                    isSelected={selectedPlayerId === gk.id}
+                    isFadedOut={isFadedOut}
+                    onClick={() => onPlayerTap(gk.id)}
+                  />
+                  {/* Ghost overlay - shows incoming player */}
+                  {ghostPlayer && (
+                    <div
+                      className="absolute inset-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (swapId) onGhostTap(swapId);
+                      }}
+                    >
+                      <PlayerCard
+                        player={ghostPlayer}
+                        isGhost={true}
+                        onClick={swapId ? () => onGhostTap(swapId) : undefined}
+                      />
+                    </div>
+                  )}
+                </div>
               );
             })()
           ) : (
