@@ -47,6 +47,9 @@ export default function DraggablePlayerCard({
 
   // Handle touch start - start long press timer
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    // Prevent default to stop scroll/zoom/other gestures
+    e.preventDefault();
+
     const touch = e.touches[0];
     startPosRef.current = { x: touch.clientX, y: touch.clientY };
 
@@ -59,6 +62,9 @@ export default function DraggablePlayerCard({
 
   // Handle touch move - update drag position or detect as drop target
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    // ALWAYS prevent default to stop scrolling during touch
+    e.preventDefault();
+
     const touch = e.touches[0];
 
     // If we moved before long press completed, cancel the timer
@@ -73,7 +79,6 @@ export default function DraggablePlayerCard({
 
     // If we're the one dragging, update position
     if (isDraggingRef.current && dragState.draggedPlayerId === player.id) {
-      e.preventDefault();
       updateDragPosition({ x: touch.clientX, y: touch.clientY });
 
       // Check what element is under the touch point
@@ -126,6 +131,7 @@ export default function DraggablePlayerCard({
     <div
       ref={cardRef}
       className="relative"
+      style={{ touchAction: 'none' }}
       data-player-id={player.id}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
