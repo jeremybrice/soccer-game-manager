@@ -48,21 +48,21 @@ export default function PlayerCard({
     return 'bg-red-500 text-white';
   };
 
-  // Ghost style - dashed border, semi-transparent
+  // Ghost style - dashed border, more solid for clarity
   if (isGhost) {
     return (
       <div
         onClick={onClick}
         className={`
           w-20 h-20 rounded-xl flex flex-col items-center justify-center
-          border-2 border-dashed border-white/70 bg-white/20
-          backdrop-blur-sm animate-pulse
+          border-2 border-dashed border-white/90 bg-white/50
+          backdrop-blur-sm
           ${onClick ? 'cursor-pointer active:scale-95' : ''}
         `}
       >
-        <div className="text-white/80 text-2xl font-bold">{player.number}</div>
-        <div className="text-white/70 text-xs">{player.name.split(' ')[0]}</div>
-        <div className="text-white/60 text-[8px] font-semibold">INCOMING</div>
+        <div className="text-white text-2xl font-bold">{player.number}</div>
+        <div className="text-white/95 text-xs">{player.name.split(' ')[0]}</div>
+        <div className="text-white/90 text-[8px] font-semibold">INCOMING</div>
       </div>
     );
   }
@@ -79,8 +79,8 @@ export default function PlayerCard({
     ? 'ring-4 ring-orange-400 ring-offset-2 ring-offset-field scale-105'
     : '';
 
-  // Faded out - player is staged to move elsewhere
-  const fadedClasses = isFadedOut ? 'opacity-50' : '';
+  // Faded out - player is staged to move elsewhere (more visible)
+  const fadedClasses = isFadedOut ? 'opacity-70' : '';
 
   const baseClasses =
     'touch-target rounded-xl font-bold transform transition-all active:scale-95';
