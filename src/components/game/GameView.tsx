@@ -243,9 +243,9 @@ export default function GameView() {
         </div>
 
         {/* Main Game Area */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden" style={{ touchAction: 'none' }}>
           {/* Field Formation */}
-          <div className="flex-1 bg-gradient-to-b from-field-light to-field p-4 overflow-y-auto">
+          <div className="flex-1 bg-gradient-to-b from-field-light to-field p-4 overflow-hidden">
             {/* Color Legend */}
             <div className="flex justify-center items-center space-x-3 mb-3 bg-black/20 backdrop-blur-sm rounded-lg py-2 px-3">
               <div className="flex items-center space-x-1">
