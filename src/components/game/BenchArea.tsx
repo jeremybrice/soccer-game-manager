@@ -2,17 +2,19 @@
  * Bench Area Component
  *
  * Philosophy: Always visible. Clear separation from field.
- * Persistent footer showing all bench players with drag-drop support.
+ * Persistent footer showing all bench players with tap-to-select support.
  */
 
 import type { Player, PositionAssignments, StagedSwap } from '../../types';
-import DraggablePlayerCard from './DraggablePlayerCard';
+import PlayerCard from './PlayerCard';
 
 interface BenchAreaProps {
   players: Player[];
   assignments: PositionAssignments;
   stagedSwaps: StagedSwap[];
+  selectedPlayerId: string | null;
   getPlayerMinutes: (playerId: string) => number;
+  onPlayerTap: (playerId: string) => void;
   onGhostTap: (swapId: string) => void;
 }
 
@@ -20,7 +22,9 @@ export default function BenchArea({
   players,
   assignments,
   stagedSwaps,
+  selectedPlayerId,
   getPlayerMinutes,
+  onPlayerTap,
   onGhostTap,
 }: BenchAreaProps) {
   // Get bench players sorted by slot
@@ -104,15 +108,31 @@ export default function BenchArea({
           const benchTime = getPlayerMinutes(player.id);
 
           return (
-            <div key={player.id} className="flex-shrink-0">
-              <DraggablePlayerCard
+            <div key={player.id} className="flex-shrink-0 relative">
+              <PlayerCard
                 player={player}
                 variant="bench"
                 benchTime={benchTime}
+                isSelected={selectedPlayerId === player.id}
                 isFadedOut={isFadedOut}
-                ghostPlayer={ghostPlayer}
-                onGhostTap={swapId ? () => onGhostTap(swapId) : undefined}
+                onClick={() => onPlayerTap(player.id)}
               />
+              {/* Ghost overlay - shows incoming player */}
+              {ghostPlayer && (
+                <div
+                  className="absolute inset-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (swapId) onGhostTap(swapId);
+                  }}
+                >
+                  <PlayerCard
+                    player={ghostPlayer}
+                    isGhost={true}
+                    onClick={swapId ? () => onGhostTap(swapId) : undefined}
+                  />
+                </div>
+              )}
             </div>
           );
         })}

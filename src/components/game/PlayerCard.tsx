@@ -18,11 +18,9 @@ interface PlayerCardProps {
   isAlerted?: boolean;
   isStaged?: boolean;
   stagedDirection?: 'toField' | 'toBench';
-  // New ghost preview props (v3.2.0)
+  // Ghost preview props (v3.2.0+)
   isGhost?: boolean;
   isFadedOut?: boolean;
-  isDragging?: boolean;
-  isDropTarget?: boolean;
 }
 
 export default function PlayerCard({
@@ -38,8 +36,6 @@ export default function PlayerCard({
   stagedDirection,
   isGhost = false,
   isFadedOut = false,
-  isDragging = false,
-  isDropTarget = false,
 }: PlayerCardProps) {
   // Get time-based color (for field and bench players)
   const getTimeBasedColor = (minutes: number): string => {
@@ -67,18 +63,6 @@ export default function PlayerCard({
     );
   }
 
-  // Dragging state - the original card left behind
-  if (isDragging) {
-    return (
-      <div className="w-20 h-20 rounded-xl border-2 border-dashed border-white/40 bg-white/10" />
-    );
-  }
-
-  // Drop target highlight
-  const dropTargetClasses = isDropTarget
-    ? 'ring-4 ring-orange-400 ring-offset-2 ring-offset-field scale-105'
-    : '';
-
   // Faded out - player is staged to move elsewhere (more visible)
   const fadedClasses = isFadedOut ? 'opacity-70' : '';
 
@@ -103,7 +87,7 @@ export default function PlayerCard({
   return (
     <button
       onClick={onClick}
-      className={`${baseClasses} ${variantClasses} ${dropTargetClasses} ${fadedClasses} w-20 h-20 flex flex-col items-center justify-center relative ${
+      className={`${baseClasses} ${variantClasses} ${fadedClasses} w-20 h-20 flex flex-col items-center justify-center relative ${
         isAlerted && variant === 'field' && !isStaged ? 'ring-4 ring-yellow-300 ring-offset-2 ring-offset-field' : ''
       }`}
     >
