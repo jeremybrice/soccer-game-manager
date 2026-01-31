@@ -30,8 +30,9 @@ export const helpSections: HelpSection[] = [
    - Timer begins in paused state
 
 3. **Make Rotations**
-   - Tap player on field to select
-   - Tap bench player to swap
+   - Tap a player to select them
+   - Tap another player to stage a swap (ghost preview appears)
+   - Swipe up on orange bar to execute all staged swaps
    - Timer resets when crossing field ↔ bench
 
 4. **Monitor Time**
@@ -107,17 +108,24 @@ Youth soccer focuses on fair **field time**, not position-specific time. Moving 
 
 ## Making a Rotation
 
-### Method: Tap to Select, Tap to Swap
+### Method: Tap to Stage, Swipe to Execute
 
-1. **Tap** a player on the field (becomes highlighted)
-2. **Tap** a bench player
-3. **Automatic swap** occurs instantly
+1. **Tap** a player (field or bench) to select them
+2. **Tap** another player to stage a swap
+3. **Ghost preview** shows where players will move
+4. **Swipe up** on the orange bar to execute all staged swaps
 
 ### Visual Feedback
 - Selected player shows **red ring** (Raiders accent color)
-- Player cards shift positions
-- Timers reset for both players
-- Rotation count increments
+- Ghost previews show staged positions (faded appearance)
+- Orange execute bar appears when swaps are staged
+- Swipe down on bar to clear all staged swaps
+- Tap a ghost to remove that individual swap
+
+### After Execution
+- Players move to their new positions
+- Timers reset for players crossing field ↔ bench
+- Rotation count increments for zone changes
 
 ## Rotation Counting
 
@@ -134,16 +142,14 @@ Youth soccer focuses on fair **field time**, not position-specific time. Moving 
 
 ## Position Changes on Field
 
-To move a player between field positions **without** going through bench:
+You can swap two field players directly:
 
-**Workaround**:
-1. Move player A to bench
-2. Move player B to player A's old spot
-3. Move player A to player B's old spot
+1. **Tap** first field player
+2. **Tap** second field player
+3. Ghost previews show the swap
+4. **Swipe up** to execute
 
-⚠️ **Note**: This creates 2 rotations. If you need position-only swaps, this is a known limitation.
-
-🔮 **Future Feature**: Direct field-to-field position swaps
+💡 **Note**: Field-to-field swaps don't count as rotations (no zone change) and timers continue running.
 
 [View rotation strategies →](#rotation-strategies)
     `
@@ -197,130 +203,7 @@ Ideal per-game stats:
 - ⚠️ Player with >50 min avg per game
 - ⚠️ Rotation count variance >50% between players
 
-💡 **Use AI Assistant**: Ask "Who needs more playing time?" for insights
-
-[Learn about AI chat →](#ai-assistant)
-    `
-  },
-  {
-    id: 'ai-assistant',
-    title: 'AI Chat Assistant',
-    icon: '🤖',
-    category: 'features',
-    order: 5,
-    keywords: ['ai', 'chat', 'assistant', 'claude', 'ask', 'question'],
-    content: `# 🤖 AI Chat Assistant
-
-## Setup Required
-
-### 1. Get an API Key
-- Visit: console.anthropic.com
-- Sign up or log in
-- Generate an API key (starts with \`sk-ant-\`)
-
-### 2. Save to App
-- Tap **settings icon** ⚙️ on home screen
-- Enter your API key
-- Tap **Save**
-
-🔒 **Privacy**: Your key is stored locally and never sent to our servers.
-
-## Using the Chat
-
-### On Stats Page
-1. Navigate to **View Stats**
-2. Tap **chat icon** 💬 (top right, next to "Season Stats")
-3. Chat modal opens
-
-### Example Questions
-
-**Playing Time Analysis**:
-- "Who needs more playing time?"
-- "How is player #7 doing this season?"
-- "Which players have the most balanced time?"
-
-**Rotation Insights**:
-- "Who has the fewest rotations?"
-- "Are rotations evenly distributed?"
-
-**Game-Specific**:
-- "How did the last game go?"
-- "What was our average playing time last game?"
-
-**Strategy**:
-- "Which players should I rotate more often?"
-- "How can I balance playing time better?"
-
-## How It Works
-
-The AI receives:
-- ✅ All season statistics
-- ✅ Player names and numbers
-- ✅ Game history and durations
-- ✅ Current rotation counts
-
-The AI provides:
-- 📊 Data-driven insights
-- 💡 Rotation suggestions
-- 🎯 Fair play recommendations
-
-## Troubleshooting
-
-| Error | Solution |
-|-------|----------|
-| "Set up API key" | Go to Settings → enter key |
-| "Invalid API key" | Check format (sk-ant-...) |
-| "No internet" | Chat requires network |
-| "Rate limit" | Wait 60 seconds, try again |
-
-💰 **Costs**: API usage charges apply (your Anthropic account). Typical question costs <$0.01.
-
-[API key security →](#faq)
-    `
-  },
-  {
-    id: 'settings',
-    title: 'Settings',
-    icon: '⚙️',
-    category: 'reference',
-    order: 6,
-    keywords: ['settings', 'config', 'api', 'key', 'anthropic'],
-    content: `# ⚙️ Settings
-
-## Accessing Settings
-
-From home screen: **Tap settings icon** ⚙️ (top right)
-
-## Available Settings
-
-### Anthropic API Key
-
-**Purpose**: Enables AI chat assistant on stats page
-
-**Setup**:
-1. Enter your API key (format: \`sk-ant-...\`)
-2. Tap **Show** to verify key (optional)
-3. Tap **Save**
-
-**Security**:
-- Stored in local IndexedDB (client-side only)
-- Not synced to cloud
-- Not accessible by other websites
-- Transmitted only to Anthropic API (HTTPS)
-
-**Updating**: Enter new key and save (overwrites old)
-
-**Removing**: Tap **Clear** button (disables AI chat)
-
-## Future Settings (Planned)
-
-- 🌙 Dark mode toggle
-- 🔔 Rotation reminders/alerts
-- ⚽ Formation selection (4-4-2, 4-3-3)
-- 📤 Export format preferences
-- 🌐 Language selection
-
-[API key FAQ →](#faq)
+[Back to Quick Start →](#quick-start)
     `
   },
   {
@@ -328,7 +211,7 @@ From home screen: **Tap settings icon** ⚙️ (top right)
     title: 'Frequently Asked Questions',
     icon: '❓',
     category: 'reference',
-    order: 7,
+    order: 5,
     keywords: ['faq', 'question', 'help', 'why', 'how'],
     content: `# ❓ Frequently Asked Questions
 
@@ -354,7 +237,7 @@ A: For 14 players, 60-minute game: **2-3 rotations per player** keeps everyone e
 
 **Q: Can I swap two field players directly?**
 
-A: Not in v2.x. You must go through the bench (see workaround in [Rotations guide](#player-rotations)). Direct swaps are planned for v3.0.
+A: Yes! Tap both field players to stage a swap. The ghost previews show where they'll move. Swipe up on the orange bar to execute.
 
 ## Stats Questions
 
@@ -366,25 +249,11 @@ A: Toggle "Active Players Only" off to see inactive/past players.
 
 A: Total field time ÷ games played (only counts games where player participated)
 
-## AI Assistant Questions
-
-**Q: Is my data private when using AI chat?**
-
-A: Stats data is sent to Anthropic's API to provide context for your questions. Anthropic has a strict privacy policy and doesn't train on your data. Your API key and stats never leave your device otherwise.
-
-**Q: What if I don't want to use AI?**
-
-A: It's completely optional! The app works fully without it. Just don't set up an API key.
-
-**Q: Can I use someone else's API key?**
-
-A: Technically yes, but they'll be charged for your usage. Best practice: each coach gets their own key.
-
 ## Technical Questions
 
 **Q: Does this work offline?**
 
-A: Core features (timer, rotations, roster) work offline. Stats sync when back online. AI chat requires internet.
+A: Yes! Core features (timer, rotations, roster, stats) all work offline. This is a PWA designed for sideline use.
 
 **Q: Which devices are supported?**
 
@@ -408,7 +277,7 @@ A: Locally in your browser's IndexedDB. Not synced to cloud. If you clear browse
     title: 'Troubleshooting',
     icon: '🐛',
     category: 'reference',
-    order: 8,
+    order: 6,
     keywords: ['troubleshooting', 'problem', 'issue', 'bug', 'error', 'fix'],
     content: `# 🐛 Troubleshooting
 
@@ -452,16 +321,6 @@ A: Locally in your browser's IndexedDB. Not synced to cloud. If you clear browse
 2. Toggle "Active Players Only" filter
 3. Verify games were properly saved (not abandoned mid-game)
 
-### AI Chat Not Working
-
-| Issue | Fix |
-|-------|-----|
-| "Set up API key" message | Settings → enter API key |
-| "Invalid API key" | Verify key starts with \`sk-ant-\` |
-| Chat button missing | Update app (v2.1.0+ required) |
-| "No internet connection" | Check network, requires online |
-| Slow responses | Normal, streaming can take 5-10 seconds |
-
 ### App Won't Load
 
 **Solutions**:
@@ -487,8 +346,7 @@ A: Locally in your browser's IndexedDB. Not synced to cloud. If you clear browse
 
 ### 1. Check Version
 - Home screen shows version (bottom)
-- Should be v2.1.0 or higher for AI features
-- Hard refresh if version is old
+- Hard refresh if version appears old
 
 ### 2. Browser Compatibility
 - **Best**: Safari on iPad (primary target)
@@ -498,10 +356,6 @@ A: Locally in your browser's IndexedDB. Not synced to cloud. If you clear browse
 ### 3. Report a Bug
 - GitHub: github.com/jeremybrice/soccer-game-manager/issues
 - Include: version number, device, browser, steps to reproduce
-
-### 4. Ask AI
-- Use chat assistant: "Why isn't my timer working?"
-- AI can help diagnose stats or usage issues
 
 ## Emergency Reset
 
@@ -523,7 +377,7 @@ Use only as last resort!
     title: 'Rotation Strategies',
     icon: '🎯',
     category: 'advanced',
-    order: 9,
+    order: 7,
     keywords: ['strategy', 'tactics', 'rotation', 'plan', 'coach', 'advanced'],
     content: `# 🎯 Rotation Strategies
 
@@ -540,8 +394,8 @@ Every player gets equal field time regardless of skill level.
 
 ### Using the App
 - Watch color indicators: rotate red players first
-- Check stats at half: equalize discrepancies
-- Ask AI: "Who needs more time this half?"
+- Check stats at halftime to equalize discrepancies
+- Prioritize players showing yellow/red time indicators
 
 ## Skill-Based Rotation
 
@@ -615,12 +469,6 @@ Result: Variety across games, not within-game tracking.
 3. Identify red players (>15 min so far)
 4. Plan to bench red players early in 2nd half
 
-### AI-Assisted Planning
-Ask during halftime:
-- "Who should I rotate more in the second half?"
-- "Are my rotations balanced so far?"
-- "Which players have been on the bench longest?"
-
 ## Weather & Fatigue Management
 
 **Hot Weather**:
@@ -647,7 +495,7 @@ Ask during halftime:
 ### Handling Complaints
 1. Show season stats (proof of balance)
 2. Explain zone-based timing (field vs bench)
-3. Use AI insights: "Data shows your player is within 5% of average"
+3. Point to specific numbers: "Your player has X minutes, average is Y"
 
 ### Proactive Communication
 - Share season stats periodically
@@ -691,17 +539,9 @@ export const tutorialSteps: TutorialStep[] = [
     action: 'Tap to view'
   },
   {
-    id: 'settings',
-    title: 'Settings',
-    description: 'Tap here to configure your API key for the AI assistant (optional).',
-    targetElement: '[data-tour="settings-icon"]',
-    position: 'bottom',
-    action: 'Configure'
-  },
-  {
     id: 'help',
     title: 'Need Help?',
-    description: 'Tap here anytime for guides, FAQs, and troubleshooting. You can also ask the AI assistant!',
+    description: 'Tap here anytime for guides, FAQs, and troubleshooting.',
     targetElement: '[data-tour="help-icon"]',
     position: 'bottom',
     action: 'Get help'

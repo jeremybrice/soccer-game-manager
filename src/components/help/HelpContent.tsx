@@ -3,6 +3,7 @@
  *
  * Philosophy: Clear typography, scannable content, actionable links.
  * Renders markdown with custom link handling for internal navigation.
+ * Mobile-first with responsive padding and touch-friendly links.
  */
 
 import React, { useMemo } from 'react';
@@ -95,26 +96,26 @@ export const HelpContent: React.FC = () => {
   // Default view: Table of contents
   if (!currentSection) {
     return (
-      <div className="flex-1 overflow-y-auto p-8">
-        <h1 className="text-3xl font-bold mb-6 text-raiders-navy">
-          Welcome to Raiders Game Manager Help
+      <div className="flex-1 overflow-y-auto p-4 md:p-8">
+        <h1 className="text-2xl md:text-3xl font-bold mb-4 md:mb-6 text-raiders-navy">
+          Help & Training
         </h1>
-        <p className="text-gray-700 mb-8">
-          Select a topic from the sidebar to get started, or use the search bar above to find what you need.
+        <p className="text-gray-700 mb-6 md:mb-8">
+          Tap a topic below or use the menu to browse all help articles.
         </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
           {helpSections.map((section) => (
             <button
               key={section.id}
               onClick={() => setActiveHelpSection(section.id)}
-              className="text-left p-4 border border-gray-200 rounded-lg hover:border-raiders-red hover:shadow-md transition-all"
+              className="text-left p-4 border border-gray-200 rounded-lg hover:border-raiders-red hover:shadow-md transition-all active:bg-gray-50 touch-target"
             >
-              <div className="text-3xl mb-2">{section.icon}</div>
-              <h3 className="text-lg font-semibold text-raiders-navy mb-1">
+              <div className="text-2xl md:text-3xl mb-2">{section.icon}</div>
+              <h3 className="text-base md:text-lg font-semibold text-raiders-navy mb-1">
                 {section.title}
               </h3>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 line-clamp-2">
                 {section.content.split('\n').find((line) => line.trim().length > 0 && !line.startsWith('#'))?.substring(0, 100)}...
               </p>
             </button>
@@ -126,8 +127,8 @@ export const HelpContent: React.FC = () => {
 
   // Specific section view
   return (
-    <div className="flex-1 overflow-y-auto p-8">
-      <article className="prose prose-lg max-w-none">
+    <div className="flex-1 overflow-y-auto p-4 md:p-8">
+      <article className="prose prose-base md:prose-lg max-w-none">
         <ReactMarkdown components={components}>
           {currentSection.content}
         </ReactMarkdown>
