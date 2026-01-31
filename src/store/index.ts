@@ -523,6 +523,29 @@ export const useAppStore = create<AppState>()((set, get) => ({
     try {
       const game = await db.getActiveGame();
       if (game && game.rotations.length > 0) {
+        // Convert Date fields from IndexedDB (may be stored as ISO strings after app restart)
+        // This ensures .getTime() works correctly for timer calculations
+        if (game.date) game.date = new Date(game.date);
+        if (game.startTime) game.startTime = new Date(game.startTime);
+        if (game.endTime) game.endTime = new Date(game.endTime);
+        if (game.timerStartedAt) game.timerStartedAt = new Date(game.timerStartedAt);
+        if (game.timerPausedAt) game.timerPausedAt = new Date(game.timerPausedAt);
+        if (game.quarterStartedAt) game.quarterStartedAt = new Date(game.quarterStartedAt);
+
+        // Convert pause period dates
+        if (game.timerPausePeriods) {
+          game.timerPausePeriods = game.timerPausePeriods.map(p => ({
+            pausedAt: new Date(p.pausedAt),
+            resumedAt: p.resumedAt ? new Date(p.resumedAt) : undefined,
+          }));
+        }
+
+        // Convert rotation timestamps
+        game.rotations = game.rotations.map(r => ({
+          ...r,
+          timestamp: new Date(r.timestamp),
+        }));
+
         const latestRotation = game.rotations[game.rotations.length - 1];
 
         // Restore timer state from database
@@ -892,7 +915,14 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   startNextQuarter: () => {
     // Advance to next quarter, reset quarter timer
-    const { quarterState, quarterConfig, currentGame } = get();
+    const { quarterState, quarterConfig, currentGame, timer, pauseTimer } = get();
+
+    // If timer is running (manual-stop case), pause it first
+    // This ensures the button shows ▶ and user can start the new quarter
+    if (timer.isRunning) {
+      pauseTimer();
+    }
+
     const nextQuarter = quarterState.currentQuarter + 1;
 
     // Check if game is complete (past Q4)
