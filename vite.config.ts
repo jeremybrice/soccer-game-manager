@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
+      includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png', 'raiders-logo.png'],
       manifest: {
         name: 'Raiders Game Manager',
         short_name: 'Raiders Manager',

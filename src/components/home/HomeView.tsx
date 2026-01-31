@@ -25,8 +25,8 @@ export default function HomeView() {
       <div className="text-center mb-12">
         <div className="mb-4 flex justify-center">
           <img
-            src="/raiders-shield.svg"
-            alt="Raiders Logo"
+            src="/raiders-logo.png"
+            alt="St. Pete Raiders Logo"
             className="h-36 w-auto"
           />
         </div>
@@ -102,7 +102,7 @@ export default function HomeView() {
 
       {/* Footer */}
       <div className="mt-12 text-white/60 text-sm text-center">
-        <p className="text-white/40 text-xs mt-1">v3.3.1 · St. Pete Raiders Edition</p>
+        <p className="text-white/40 text-xs mt-1">v3.4.0 · St. Pete Raiders Edition</p>
       </div>
     </div>
   );
