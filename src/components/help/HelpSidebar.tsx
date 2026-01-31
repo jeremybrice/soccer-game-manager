@@ -3,6 +3,7 @@
  *
  * Philosophy: Organized sections with visual hierarchy.
  * Filtered by search query, grouped by category.
+ * Touch-friendly with proper tap targets for mobile use.
  */
 
 import React, { useMemo } from 'react';
@@ -10,7 +11,11 @@ import { useAppStore } from '../../store';
 import { helpSections } from '../../data/helpContent';
 import type { HelpCategory } from '../../types';
 
-export const HelpSidebar: React.FC = () => {
+interface HelpSidebarProps {
+  onSectionSelect?: () => void;
+}
+
+export const HelpSidebar: React.FC<HelpSidebarProps> = ({ onSectionSelect }) => {
   const activeHelpSection = useAppStore((state) => state.activeHelpSection);
   const setActiveHelpSection = useAppStore((state) => state.setActiveHelpSection);
   const searchQuery = useAppStore((state) => state.searchQuery);
@@ -45,7 +50,7 @@ export const HelpSidebar: React.FC = () => {
   };
 
   return (
-    <div className="w-64 bg-gray-50 border-r border-gray-200 overflow-y-auto">
+    <div className="h-full overflow-y-auto">
       {Object.entries(categories).map(([category, sections]) => {
         if (sections.length === 0) return null;
 
@@ -58,8 +63,11 @@ export const HelpSidebar: React.FC = () => {
               {sections.map((section) => (
                 <button
                   key={section.id}
-                  onClick={() => setActiveHelpSection(section.id)}
-                  className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                  onClick={() => {
+                    setActiveHelpSection(section.id);
+                    onSectionSelect?.();
+                  }}
+                  className={`w-full text-left px-4 py-3 md:py-2 text-base md:text-sm transition-colors touch-target ${
                     activeHelpSection === section.id
                       ? 'bg-raiders-red text-white'
                       : 'text-gray-700 hover:bg-gray-200'
