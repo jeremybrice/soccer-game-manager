@@ -2,7 +2,7 @@
  * Help Sidebar Navigation
  *
  * Philosophy: Organized sections with visual hierarchy.
- * Filtered by search query, grouped by category.
+ * Grouped by category for easy browsing.
  * Touch-friendly with proper tap targets for mobile use.
  */
 
@@ -18,29 +18,16 @@ interface HelpSidebarProps {
 export const HelpSidebar: React.FC<HelpSidebarProps> = ({ onSectionSelect }) => {
   const activeHelpSection = useAppStore((state) => state.activeHelpSection);
   const setActiveHelpSection = useAppStore((state) => state.setActiveHelpSection);
-  const searchQuery = useAppStore((state) => state.searchQuery);
 
-  // Filter sections based on search
-  const filteredSections = useMemo(() => {
-    if (!searchQuery.trim()) return helpSections;
-
-    const query = searchQuery.toLowerCase();
-    return helpSections.filter((section) =>
-      section.title.toLowerCase().includes(query) ||
-      section.keywords.some((kw) => kw.includes(query)) ||
-      section.content.toLowerCase().includes(query)
-    );
-  }, [searchQuery]);
-
-  // Group by category
+  // Group sections by category
   const categories = useMemo(() => {
     return {
-      'getting-started': filteredSections.filter((s) => s.category === 'getting-started'),
-      'features': filteredSections.filter((s) => s.category === 'features'),
-      'reference': filteredSections.filter((s) => s.category === 'reference'),
-      'advanced': filteredSections.filter((s) => s.category === 'advanced'),
+      'getting-started': helpSections.filter((s) => s.category === 'getting-started'),
+      'features': helpSections.filter((s) => s.category === 'features'),
+      'reference': helpSections.filter((s) => s.category === 'reference'),
+      'advanced': helpSections.filter((s) => s.category === 'advanced'),
     };
-  }, [filteredSections]);
+  }, []);
 
   const categoryLabels: Record<HelpCategory, string> = {
     'getting-started': '🚀 Getting Started',
@@ -81,12 +68,6 @@ export const HelpSidebar: React.FC<HelpSidebarProps> = ({ onSectionSelect }) => 
           </div>
         );
       })}
-
-      {filteredSections.length === 0 && (
-        <div className="px-4 py-8 text-center text-gray-500 text-sm">
-          No results found for "{searchQuery}"
-        </div>
-      )}
     </div>
   );
 };
