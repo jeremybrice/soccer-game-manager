@@ -3,8 +3,7 @@
  *
  * Philosophy: Help should be instantly accessible but never intrusive.
  * Modal overlay allows quick reference without navigation, dismissible with
- * single tap outside. Searchable content prioritizes "find answer fast"
- * over exhaustive reading.
+ * single tap outside. Browse topics via sidebar navigation.
  *
  * Mobile-first: Full screen on mobile with collapsible navigation.
  * Touch-friendly with proper tap targets for sideline use.
@@ -14,12 +13,10 @@ import React, { useState } from 'react';
 import { useAppStore } from '../../store';
 import { HelpSidebar } from './HelpSidebar';
 import { HelpContent } from './HelpContent';
-import { HelpSearch } from './HelpSearch';
 
 export const HelpModal: React.FC = () => {
   const isHelpOpen = useAppStore((state) => state.isHelpOpen);
   const closeHelp = useAppStore((state) => state.closeHelp);
-  const activeHelpSection = useAppStore((state) => state.activeHelpSection);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   if (!isHelpOpen) return null;
@@ -68,11 +65,8 @@ export const HelpModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Search Bar */}
-        <HelpSearch />
-
         {/* Content Area */}
-        <div className="flex flex-1 overflow-hidden relative">
+        <div className="flex flex-1 min-h-0 relative">
           {/* Mobile Navigation Overlay */}
           {isMobileNavOpen && (
             <div
@@ -96,26 +90,11 @@ export const HelpModal: React.FC = () => {
             <HelpSidebar onSectionSelect={handleSectionSelect} />
           </div>
 
-          {/* Main Content */}
-          <div className="flex-1 overflow-hidden">
+          {/* Main Content - scrollable */}
+          <div className="flex-1 overflow-y-auto">
             <HelpContent />
           </div>
         </div>
-
-        {/* Mobile: Show current section indicator when nav is closed */}
-        {!isMobileNavOpen && activeHelpSection && (
-          <div className="md:hidden bg-gray-100 px-4 py-2 text-sm text-gray-600 border-t shrink-0">
-            <button
-              onClick={() => setIsMobileNavOpen(true)}
-              className="flex items-center gap-2 text-raiders-navy font-medium"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-              Browse Topics
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
