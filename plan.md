@@ -1,94 +1,160 @@
-# Debug Plan: Game Screen Deep Dive
+# Flexible Formations - Implementation Plan
 
-## Approach
-Run the app with Playwright E2E tests targeting the game screen. Write a comprehensive test suite that exercises every game screen feature, capturing screenshots at each step. Then fix bugs discovered.
+## Problem Statement
 
-## Phase 1: Setup & Smoke Test
-1. Install dependencies, ensure dev server starts, verify Playwright works
-2. Run existing tests to establish baseline (expect some may fail)
+The current system only supports two hardcoded formations (3-3-2 and 3-4-1), both assuming 9 field players. Real youth soccer scenarios vary wildly — sometimes only 6 kids show up (5 field + 1 GK). Coaches need full control over formation structure, the ability to save templates, and the ability to change formations mid-game.
 
-## Phase 2: Write Comprehensive Game Screen E2E Tests
-Create `tests/game-debug.spec.ts` covering these scenarios:
+## Design Overview
 
-### A. Game Startup & Timer
-- Start a new game with 14 players (full roster)
-- Verify all players are assigned (9 field + 5 bench)
-- Verify timer shows 0:00 before starting
-- **Bug check**: Player minutes should show 0 before timer starts (not accumulated time)
-- Start timer, wait 5s, verify timer advances
-- Pause timer, verify all timers freeze
-- Resume timer, verify timers continue correctly
+### Core Concept: Custom Formation Definition
 
-### B. Quarter System
-- Let timer run to near quarter end (use fast-forward or manipulate state)
-- Verify quarter indicator shows Q1
-- Verify auto-pause triggers at 15:00 boundary
-- Test "Continue Quarter" → overtime display (+MM:SS)
-- Test "Start Next Quarter" → advances to Q2, resets quarter timer
-- Verify Q4 end shows "Game Complete"
+Replace the hardcoded `FORMATION_A`/`FORMATION_B` with a flexible `FormationTemplate` that defines:
+- A name (e.g., "5v5 Short Squad", "3-3-2 Standard")
+- The number of players in each position row (GK is always 1)
+- Custom position labels per slot (optional — auto-generated if not provided)
 
-### C. Drag-Drop Swap System
-- Long-press a field player to initiate drag
-- Drag to a bench player → verify ghost preview appears
-- Verify faded-out styling on source player
-- **Bug check**: Stage field↔field swap, verify ghost display isn't confusing (both faded)
-- Stage multiple swaps, verify SwipeExecuteBar appears
-- Tap a ghost to unstage individual swap
-- Swipe up to execute all swaps
-- **Bug check**: Stage overlapping swaps (A↔B, then B↔C), execute, verify positions are correct
-- Swipe down to clear all staged swaps
+```typescript
+interface FormationTemplate {
+  id: string;
+  name: string;
+  rows: FormationRow[];       // Ordered top-to-bottom (FWD → MID → DEF)
+  createdAt: number;
+  isBuiltIn: boolean;         // true for the two default formations
+}
 
-### D. Player Time Tracking
-- Start game, let run for a few seconds
-- Verify player cards show time badges
-- Verify time-based colors: green (<10m), yellow (10-15m), red (>15m)
-- Swap a field player to bench → verify their field timer resets
-- **Bug check**: Verify bench time starts from 0 after swap, not carried over
+interface FormationRow {
+  position: Position;         // DEF, MID, or FWD
+  count: number;              // How many players in this row
+  labels?: string[];          // Optional custom labels (auto-generated if omitted)
+}
+```
 
-### E. Pause Behavior
-- Start game, pause, verify all player timers freeze
-- Resume, verify timers continue from where they left off (no gap or jump)
-- Rapid pause/resume multiple times, verify no time drift
-- Pause near quarter boundary, resume, verify quarter end detection still works
+**Key insight**: GK is always exactly 1 and rendered separately — it's not part of `rows`. Bench is computed dynamically: `benchCount = totalActivePlayers - (1 + sum(row.count))`.
 
-### F. Game State Persistence
-- Start a game, make some swaps, let timer run
-- Refresh the page (simulate app restart)
-- Verify game state is restored: timer, positions, quarter, staged swaps
-- **Bug check**: Verify no NaN in timer display after reload
+### What Changes
 
-### G. Edge Cases
-- Start game with minimum players (9)
-- Try to swap when no players are staged
-- Verify bench area shows correctly with 0 and 5 bench players
+#### 1. Types (`types/index.ts`)
+- Add `FormationTemplate` and `FormationRow` interfaces
+- Replace `FORMATION_A`/`FORMATION_B` constants with `DEFAULT_FORMATIONS` array containing the two built-in templates
+- Remove `FormationType = 'A' | 'B'` — replace with `string` (template ID)
+- Update `getSlotLabel()` to accept a `FormationTemplate` instead of `FormationType`
+- Remove hardcoded `TOTAL_PLAYERS`, `FIELD_PLAYERS`, `BENCH` counts — these are now dynamic
+- Keep `MIN_PLAYERS_TO_START` (but lower it — with 5+1 GK scenarios, 7 may be too high; consider making it `MIN_FIELD_PLAYERS = 3` + GK)
+- Keep `Position`, `PlayerPosition`, `PositionAssignments` unchanged — the slot system already supports flexible formations
 
-## Phase 3: Run Tests & Capture Screenshots
-- Run each test scenario, screenshot at every meaningful state
-- Document all failures with screenshots and error details
+#### 2. Database (`db/index.ts`)
+- Add `formationTemplates` table (schema v4) for saved custom formations
+- Seed the two built-in formations on first run
+- Store the active formation template ID on `GameSession` so game history knows which formation was used
+- Migration: Convert existing `selectedFormation: 'A'|'B'` preference to template IDs
 
-## Phase 4: Fix Bugs Found
-Based on the code analysis, prioritize these likely bugs:
+#### 3. Store (`store/index.ts`)
+- Replace `selectedFormation: FormationType` with `selectedFormationId: string`
+- Add `formationTemplates: FormationTemplate[]` state
+- Add actions:
+  - `loadFormationTemplates()` — load from DB on init
+  - `saveFormationTemplate(template)` — create/update custom template
+  - `deleteFormationTemplate(id)` — delete (block for built-in)
+  - `setActiveFormation(id)` — set for current/upcoming game
+  - `changeFormationMidGame(templateId)` — change formation during active game (reassigns players to new structure)
+- Update `setFormation` → `setActiveFormation`
 
-### P0 - Critical
-1. **Staged swap execution order** (`store/index.ts`): Overlapping swaps read mutated state instead of original positions. Fix: snapshot original positions before executing swap loop.
-2. **Player minutes shown before timer starts** (`GameView.tsx`): Players show accumulated time before game clock starts. Fix: return 0 when timer hasn't started.
+#### 4. Formation Setup View (`FormationSetupView.tsx`)
+- Replace `FormationSelector` (A vs B radio) with a template picker:
+  - Show saved templates as cards in a scrollable list
+  - Each card shows: name, structure visualization (dots), player count
+  - "Create New Formation" button at the end
+  - Tap to select, long-press or edit icon to modify/delete
+- When a template is selected, auto-assign runs using the template's row structure
+- The "Start Game" button shows the formation name instead of "3-3-2"
 
-### P1 - High
-3. **Quarter timer pause calculation** (`store/index.ts`): Race condition when pausing at quarter boundary. Fix: ensure pause overlap calculation handles edge correctly.
-4. **Ghost preview for field↔field swaps** (`FieldFormation.tsx`): Both players appear faded, confusing UX. Fix: only fade the source player, show ghost of destination.
-5. **Timer persistence after reload** (`store/index.ts`): Date objects from IndexedDB may be strings → NaN. Fix: add defensive Date conversion with validation.
+#### 5. New: Formation Builder Component (`FormationBuilder.tsx`)
+- Full-screen modal/view for creating/editing a formation template
+- UI concept (touch-first, simple):
+  - Formation name text input at top
+  - Visual row editor: Each row (FWD/MID/DEF) shows as a horizontal bar with +/- buttons to change count
+  - "Add Row" button to add another position row (e.g., a second midfield line for 4-2-3-1 style)
+  - Live preview of the formation (dots on a mini field) updates as you adjust
+  - Total field player count displayed prominently
+  - "Save Template" button
+- Validation: At least 1 field player row, total field players ≥ 1
+- Pre-populate with the two defaults for easy customization
 
-### P2 - Medium
-6. **Pause period tracking** (`store/index.ts`): Multiple rapid pauses could corrupt pause periods array. Fix: validate pause state before adding new period.
-7. **Quarter state initialization** (`store/index.ts`): `quarterStartedAt` not set at game start. Fix: set it when game starts.
+#### 6. Formation Selector Component (`FormationSelector.tsx`) — Major Rewrite
+- Instead of two hardcoded buttons, render a dynamic list of `FormationTemplate` cards
+- Each card shows: template name, structure string (e.g., "3-3-2"), dot visualization, field player count
+- Selected template highlighted in red
+- "+" card at end to create new template
+- Edit/delete actions available via swipe or icon
 
-## Phase 5: Verify Fixes
-- Re-run all E2E tests
-- Confirm all screenshots look correct
-- Commit and push to branch
+#### 7. Formation Preview (`FormationPreview.tsx`)
+- Already mostly dynamic (uses `formationConfig[position]` for slot counts)
+- Change to read from `FormationTemplate.rows` instead of `FORMATION_A`/`FORMATION_B`
+- Render rows dynamically: iterate `template.rows` top-to-bottom
+- Position labels come from `row.labels` or auto-generated (L/C/R pattern)
 
-## Files Likely to be Modified
-- `src/store/index.ts` (swap execution, timer, quarter state)
-- `src/components/game/GameView.tsx` (timer display, player minutes)
-- `src/components/game/FieldFormation.tsx` (ghost preview logic)
-- `tests/game-debug.spec.ts` (new comprehensive test file)
+#### 8. Field Formation (`FieldFormation.tsx`) — During Game
+- Same approach: render rows dynamically from the active template
+- Instead of hardcoded FWD/MID/DEF sections, iterate `template.rows`
+- Position labels from template
+- Empty slot rendering uses template's row counts
+
+#### 9. Mid-Game Formation Change
+- New button in GameView header/menu: "Change Formation"
+- Opens a modal showing available templates
+- On selection:
+  - Maps current players to new formation structure (best-effort: keep GK, reassign field players top-down by their current row)
+  - Bench players stay on bench
+  - Creates a new rotation entry to capture the change
+  - Coach can manually adjust after the formation change
+- This is critical for scenarios like: "A player got hurt, now I need to go from 3-3-2 to 2-3-1"
+
+#### 10. Auto-Generated Position Labels
+When `FormationRow.labels` is not provided, generate labels based on count:
+- 1 player: `C` + position prefix (e.g., "CF", "CM", "CD")
+- 2 players: `L` + prefix, `R` + prefix
+- 3 players: `L` + prefix, `C` + prefix, `R` + prefix
+- 4 players: `L` + prefix, `CL` + prefix, `CR` + prefix, `R` + prefix
+- 5+: prefix + slot number
+
+Position prefix map: DEF→"D", MID→"M", FWD→"F"
+
+### What Stays the Same
+
+- **Timer system**: Still tracks field vs bench zones. No change needed — `Position` type still has 'BENCH' vs field positions
+- **Rotation counting**: Still counts field↔bench transitions. Unchanged.
+- **Drag-drop swap system**: Works with any formation — swaps operate on player IDs, not positions
+- **Quarter system**: Completely orthogonal to formations
+- **PlayerCard component**: No changes needed
+- **BenchArea component**: Dynamic bench count already works
+- **Statistics**: Position-level stats (DEF/MID/FWD time) still work since `Position` type is unchanged
+
+### Implementation Order
+
+1. **Types first**: Define `FormationTemplate`, `FormationRow`, update helpers — everything else depends on this
+2. **Database**: Add `formationTemplates` table, migration, CRUD methods
+3. **Store**: New state, actions, load on init
+4. **Formation Builder**: New component for creating/editing templates
+5. **Formation Selector**: Rewrite to use template list
+6. **Formation Setup View**: Wire up new selector + builder
+7. **Formation Preview**: Make dynamic based on template rows
+8. **Field Formation**: Make dynamic based on template rows
+9. **Mid-game formation change**: Add UI + store action
+10. **Update version**: Bump to v4.0.0 (major: breaking DB schema change)
+11. **Update CLAUDE.md**: Document new formation system
+
+### Migration Strategy
+
+- DB v4 migration creates `formationTemplates` table
+- Seeds two built-in templates matching current Formation A and B
+- Converts `selectedFormation` preference from `'A'`/`'B'` to template IDs
+- Active games: If a game is in progress during migration, map its formation to the corresponding built-in template ID
+- No data loss — existing rotation history still uses `PositionAssignments` which is unchanged
+
+### Edge Cases
+
+- **0 bench players**: Valid — all players on field (e.g., exactly 6 players with 5+GK formation)
+- **More players than formation slots**: Extra players go to bench automatically
+- **Fewer players than formation slots**: Empty slots shown on field (already handled)
+- **Mid-game formation change with fewer rows**: Players from removed rows get moved to bench or redistributed
+- **Deleting a template that's in use**: Block deletion, or fall back to a built-in template
