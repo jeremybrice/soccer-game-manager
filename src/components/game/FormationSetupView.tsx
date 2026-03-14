@@ -7,28 +7,38 @@
 
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../../store';
-import type { Position, PlayerPosition, PositionAssignments, FormationType } from '../../types';
-import { FORMATION_A, FORMATION_B, MIN_PLAYERS_TO_START, RECOMMENDED_MIN_PLAYERS, createPlayerPosition } from '../../types';
+import type { Position, PlayerPosition, PositionAssignments, FormationTemplate } from '../../types';
+import { MIN_PLAYERS_TO_START, RECOMMENDED_MIN_PLAYERS, createPlayerPosition, getFormationConfig } from '../../types';
 import FormationSelector from './FormationSelector';
 import FormationPreview from './FormationPreview';
 
 export default function FormationSetupView() {
-  const { players, startGame, navigateTo, selectedFormation, setFormation } = useAppStore();
+  const {
+    players,
+    startGame,
+    navigateTo,
+    formationTemplates,
+    selectedFormationId,
+    activeFormation,
+    setActiveFormation,
+    saveFormationTemplate,
+    deleteFormationTemplate,
+  } = useAppStore();
   const [assignments, setAssignments] = useState<PositionAssignments>({});
 
   // Auto-assign positions when component mounts or formation changes
   useEffect(() => {
-    const initialAssignments = autoAssignPositions(players, selectedFormation);
+    const initialAssignments = autoAssignPositions(players, activeFormation);
     setAssignments(initialAssignments);
-  }, [players, selectedFormation]);
+  }, [players, activeFormation]);
 
-  // Smart auto-assignment based on player preferences and selected formation
-  const autoAssignPositions = (playerList: typeof players, formation: FormationType): PositionAssignments => {
+  // Smart auto-assignment based on player preferences and selected formation template
+  const autoAssignPositions = (playerList: typeof players, template: FormationTemplate): PositionAssignments => {
     const result: PositionAssignments = {};
     const unassigned = [...playerList];
 
     // Track slot usage for each position
-    const formationConfig = formation === 'A' ? FORMATION_A : FORMATION_B;
+    const formationConfig = getFormationConfig(template);
     const slotCounters: Record<Position, number> = {
       GK: 0,
       DEF: 0,
@@ -39,8 +49,10 @@ export default function FormationSetupView() {
 
     const assignPlayerToPosition = (playerId: string, position: Position) => {
       const slot = slotCounters[position];
+      if (position !== 'BENCH' && slot >= formationConfig[position]) return false;
       result[playerId] = createPlayerPosition(position, slot);
       slotCounters[position]++;
+      return true;
     };
 
     // First pass: Assign GK (most critical)
@@ -51,7 +63,12 @@ export default function FormationSetupView() {
     }
 
     // Second pass: Assign players to their preferred positions
-    const positionOrder: Position[] = ['DEF', 'MID', 'FWD'];
+    // Use the formation rows to determine which positions exist
+    const positionsInFormation = template.rows.map(r => r.position);
+    const positionOrder: Position[] = ['DEF', 'MID', 'FWD'].filter(
+      p => positionsInFormation.includes(p as Position)
+    ) as Position[];
+
     positionOrder.forEach((position) => {
       const needed = formationConfig[position];
       for (let i = 0; i < needed; i++) {
@@ -84,16 +101,23 @@ export default function FormationSetupView() {
     return result;
   };
 
-  const handleFormationChange = async (formation: FormationType) => {
-    await setFormation(formation);
-    // Auto-assignments will update via useEffect
+  const handleFormationSelect = async (templateId: string) => {
+    await setActiveFormation(templateId);
+  };
+
+  const handleSaveTemplate = async (template: FormationTemplate) => {
+    await saveFormationTemplate(template);
+  };
+
+  const handleDeleteTemplate = async (templateId: string) => {
+    await deleteFormationTemplate(templateId);
   };
 
   const handleStart = async () => {
     const fieldPlayerCount = Object.values(assignments).filter(p => p.position !== 'BENCH').length;
 
     if (fieldPlayerCount < MIN_PLAYERS_TO_START) {
-      alert(`Please assign at least ${MIN_PLAYERS_TO_START} players (1 GK + 6 field players) to start`);
+      alert(`Please assign at least ${MIN_PLAYERS_TO_START} players (1 GK + field players) to start`);
       return;
     }
 
@@ -140,13 +164,16 @@ export default function FormationSetupView() {
         <div className="max-w-4xl mx-auto space-y-6">
           {/* Formation Selector */}
           <FormationSelector
-            selectedFormation={selectedFormation}
-            onFormationChange={handleFormationChange}
+            templates={formationTemplates}
+            selectedTemplateId={selectedFormationId}
+            onSelect={handleFormationSelect}
+            onSaveTemplate={handleSaveTemplate}
+            onDeleteTemplate={handleDeleteTemplate}
           />
 
           {/* Formation Preview with Player Assignment */}
           <FormationPreview
-            formation={selectedFormation}
+            template={activeFormation}
             assignments={assignments}
             players={players}
             onPlayerAssignment={handlePlayerAssignment}
@@ -170,10 +197,10 @@ export default function FormationSetupView() {
             </div>
           </div>
 
-          {/* Warning if < 9 players */}
+          {/* Warning if low player count */}
           {showWarning && (
             <div className="bg-yellow-500/20 backdrop-blur border-2 border-yellow-500/50 text-yellow-900 px-6 py-4 rounded-xl">
-              <div className="font-semibold mb-1">⚠️ Low Player Count</div>
+              <div className="font-semibold mb-1">Low Player Count</div>
               <div className="text-sm">
                 You have {fieldPlayerCount} field players (recommended: {RECOMMENDED_MIN_PLAYERS}).
                 You can still start, but rotations may be limited.
@@ -193,7 +220,7 @@ export default function FormationSetupView() {
               }`}
             >
               {canStart
-                ? `Start Game with ${selectedFormation === 'A' ? '3-3-2' : '3-4-1'} Formation`
+                ? `Start Game with ${activeFormation.name} Formation`
                 : !hasGK
                   ? 'Assign a Goalkeeper First'
                   : `Need at least ${MIN_PLAYERS_TO_START} players`

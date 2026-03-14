@@ -1,41 +1,40 @@
 /**
- * Formation Preview Component
+ * Formation Preview Component (v4.0.0 - Flexible Formations)
  *
  * Philosophy: Visual and interactive. Tap to assign players to positions.
  * Clear feedback on what's assigned and what's available.
+ * Renders rows dynamically from the active formation template.
  */
 
 import { useState } from 'react';
-import type { Player, Position, PlayerPosition, PositionAssignments, FormationType } from '../../types';
-import { FORMATION_A, FORMATION_B, createPlayerPosition, getSlotLabel } from '../../types';
+import type { Player, Position, PlayerPosition, PositionAssignments, FormationTemplate } from '../../types';
+import { createPlayerPosition, getSlotLabel, generateRowLabels, getFormationConfig } from '../../types';
 
 interface FormationPreviewProps {
-  formation: FormationType;
+  template: FormationTemplate;
   assignments: PositionAssignments;
   players: Player[];
   onPlayerAssignment: (playerId: string, playerPosition: PlayerPosition) => void;
 }
 
 export default function FormationPreview({
-  formation,
+  template,
   assignments,
   players,
   onPlayerAssignment,
 }: FormationPreviewProps) {
-  // Track both position and slot when user clicks
   const [selectedSlot, setSelectedSlot] = useState<{ position: Position; slot: number } | null>(null);
 
-  const formationConfig = formation === 'A' ? FORMATION_A : FORMATION_B;
+  const formationConfig = getFormationConfig(template);
 
-  // Get players assigned to a specific position, sorted by slot
+  // Get players assigned to a specific position, filling slots
   const getPlayersAtPosition = (position: Position): (Player | null)[] => {
     const slotCount = formationConfig[position];
     const result: (Player | null)[] = Array(slotCount).fill(null);
 
-    // Fill slots with assigned players
     players.forEach(player => {
       const playerPos = assignments[player.id];
-      if (playerPos && playerPos.position === position) {
+      if (playerPos && playerPos.position === position && playerPos.slot < slotCount) {
         result[playerPos.slot] = player;
       }
     });
@@ -52,48 +51,19 @@ export default function FormationPreview({
   };
 
   const handlePositionClick = (position: Position, slot: number) => {
-    if (position === 'BENCH') return; // Don't allow selecting bench
+    if (position === 'BENCH') return;
     setSelectedSlot({ position, slot });
   };
 
   const handlePlayerClick = (player: Player) => {
-    if (!selectedSlot) {
-      // If no slot selected, show which position this player is at
-      return;
-    }
-
-    // Assign player to selected position and slot
+    if (!selectedSlot) return;
     onPlayerAssignment(player.id, createPlayerPosition(selectedSlot.position, selectedSlot.slot));
     setSelectedSlot(null);
   };
 
   const handleRemovePlayer = (playerId: string) => {
-    // Send to bench at slot 0 (bench order can be managed later)
     const benchPlayers = getPlayersAtPosition('BENCH').filter(p => p !== null).length;
     onPlayerAssignment(playerId, createPlayerPosition('BENCH', benchPlayers));
-  };
-
-  // Position layout helpers
-  const getPositionSlots = (position: Position): number => {
-    return formationConfig[position];
-  };
-
-  const getPositionLabel = (position: Position, index: number): string => {
-    if (position === 'GK') return 'GK';
-    if (position === 'FWD') {
-      return formation === 'A'
-        ? ['LF', 'RF'][index] || 'FWD'
-        : 'CF'; // Formation B has only 1 forward
-    }
-    if (position === 'MID') {
-      return formation === 'A'
-        ? ['LM', 'CM', 'RM'][index] || 'MID'
-        : ['LM', 'CLM', 'CRM', 'RM'][index] || 'MID';
-    }
-    if (position === 'DEF') {
-      return ['LD', 'CD', 'RD'][index] || 'DEF';
-    }
-    return position;
   };
 
   return (
@@ -102,7 +72,7 @@ export default function FormationPreview({
 
       {selectedSlot && (
         <div className="bg-raiders-red text-white px-4 py-3 rounded-lg mb-4 font-semibold text-center">
-          Assigning to {getSlotLabel(selectedSlot.position, selectedSlot.slot, formation)} - Tap a player below
+          Assigning to {getSlotLabel(selectedSlot.position, selectedSlot.slot, template)} - Tap a player below
           <button
             onClick={() => setSelectedSlot(null)}
             className="ml-3 px-3 py-1 bg-white/20 hover:bg-white/30 rounded text-sm"
@@ -119,71 +89,44 @@ export default function FormationPreview({
           <div className="text-[200px]">🛡️</div>
         </div>
 
-        {/* Positions Grid */}
+        {/* Positions Grid - Dynamic rows */}
         <div className="relative z-10 flex flex-col justify-between h-full space-y-6">
-          {/* Forwards */}
-          <div className="flex justify-center gap-4">
-            {Array(getPositionSlots('FWD')).fill(0).map((_, index) => {
-              const assignedPlayers = getPlayersAtPosition('FWD');
-              const player = assignedPlayers[index];
+          {/* Formation rows (top-to-bottom: FWD → MID → DEF) */}
+          {template.rows.map((row, rowIndex) => {
+            const labels = generateRowLabels(row);
+            const assignedPlayers = getPlayersAtPosition(row.position);
 
-              return (
-                <PositionSlot
-                  key={`FWD-${index}`}
-                  position="FWD"
-                  label={getPositionLabel('FWD', index)}
-                  player={player ?? undefined}
-                  isSelected={selectedSlot?.position === 'FWD' && selectedSlot?.slot === index}
-                  onPositionClick={() => handlePositionClick('FWD', index)}
-                  onRemovePlayer={player ? () => handleRemovePlayer(player.id) : undefined}
-                />
-              );
-            })}
-          </div>
+            return (
+              <div key={rowIndex} className="flex justify-center gap-4">
+                {Array(row.count).fill(0).map((_, slotIndex) => {
+                  // Calculate the actual slot index across all rows of the same position
+                  // For templates with multiple rows of the same position type
+                  const samePositionRowsBefore = template.rows
+                    .slice(0, rowIndex)
+                    .filter(r => r.position === row.position)
+                    .reduce((sum, r) => sum + r.count, 0);
+                  const actualSlot = samePositionRowsBefore + slotIndex;
+                  const player = assignedPlayers[actualSlot];
 
-          {/* Midfielders */}
-          <div className="flex justify-center gap-4">
-            {Array(getPositionSlots('MID')).fill(0).map((_, index) => {
-              const assignedPlayers = getPlayersAtPosition('MID');
-              const player = assignedPlayers[index];
+                  return (
+                    <PositionSlot
+                      key={`${row.position}-${actualSlot}`}
+                      position={row.position}
+                      label={labels[slotIndex]}
+                      player={player ?? undefined}
+                      isSelected={selectedSlot?.position === row.position && selectedSlot?.slot === actualSlot}
+                      onPositionClick={() => handlePositionClick(row.position, actualSlot)}
+                      onRemovePlayer={player ? () => handleRemovePlayer(player.id) : undefined}
+                    />
+                  );
+                })}
+              </div>
+            );
+          })}
 
-              return (
-                <PositionSlot
-                  key={`MID-${index}`}
-                  position="MID"
-                  label={getPositionLabel('MID', index)}
-                  player={player ?? undefined}
-                  isSelected={selectedSlot?.position === 'MID' && selectedSlot?.slot === index}
-                  onPositionClick={() => handlePositionClick('MID', index)}
-                  onRemovePlayer={player ? () => handleRemovePlayer(player.id) : undefined}
-                />
-              );
-            })}
-          </div>
-
-          {/* Defenders */}
-          <div className="flex justify-center gap-4">
-            {Array(getPositionSlots('DEF')).fill(0).map((_, index) => {
-              const assignedPlayers = getPlayersAtPosition('DEF');
-              const player = assignedPlayers[index];
-
-              return (
-                <PositionSlot
-                  key={`DEF-${index}`}
-                  position="DEF"
-                  label={getPositionLabel('DEF', index)}
-                  player={player ?? undefined}
-                  isSelected={selectedSlot?.position === 'DEF' && selectedSlot?.slot === index}
-                  onPositionClick={() => handlePositionClick('DEF', index)}
-                  onRemovePlayer={player ? () => handleRemovePlayer(player.id) : undefined}
-                />
-              );
-            })}
-          </div>
-
-          {/* Goalkeeper */}
+          {/* Goalkeeper (always 1) */}
           <div className="flex justify-center">
-            {Array(getPositionSlots('GK')).fill(0).map((_, index) => {
+            {Array(formationConfig.GK).fill(0).map((_, index) => {
               const assignedPlayers = getPlayersAtPosition('GK');
               const player = assignedPlayers[index];
 

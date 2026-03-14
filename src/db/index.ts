@@ -6,7 +6,8 @@
  */
 
 import Dexie, { type Table } from 'dexie';
-import type { Player, GameSession, Rotation, PositionAssignments } from '../types';
+import type { Player, GameSession, Rotation, PositionAssignments, FormationTemplate } from '../types';
+import { DEFAULT_FORMATIONS } from '../types';
 
 /**
  * User preference storage for app settings
@@ -36,6 +37,7 @@ export class SoccerDatabase extends Dexie {
   games!: Table<GameSession, string>;
   rotations!: Table<Rotation, string>;
   userPreferences!: Table<UserPreference, string>;
+  formationTemplates!: Table<FormationTemplate, string>;
 
   constructor() {
     super('SoccerGameManager');
@@ -70,6 +72,31 @@ export class SoccerDatabase extends Dexie {
         await tx.table('games').clear();
         await tx.table('rotations').clear();
       });
+
+    // Schema version 4: Add formation templates table (v4.0.0 - Flexible Formations)
+    this.version(4)
+      .stores({
+        players: 'id, number, isActive',
+        games: 'id, date, isActive',
+        rotations: 'id, timestamp, gameId',
+        userPreferences: 'key, lastUpdated',
+        formationTemplates: 'id, name, isBuiltIn, createdAt',
+      })
+      .upgrade(async (tx) => {
+        console.log('[DB Migration v4] Adding formation templates table and seeding built-in formations');
+        const table = tx.table('formationTemplates');
+        for (const template of DEFAULT_FORMATIONS) {
+          await table.put(template);
+        }
+        // Migrate selectedFormation preference to template ID
+        const prefs = tx.table('userPreferences');
+        const pref = await prefs.get('selectedFormation');
+        if (pref) {
+          const newId = pref.value === 'B' ? 'builtin-3-4-1' : 'builtin-3-3-2';
+          await prefs.put({ key: 'selectedFormationId', value: newId, lastUpdated: Date.now() });
+          console.log(`[DB Migration v4] Migrated formation preference '${pref.value}' → '${newId}'`);
+        }
+      });
   }
 
   /**
@@ -80,6 +107,21 @@ export class SoccerDatabase extends Dexie {
     if (playerCount === 0) {
       console.log('First run - database initialized');
       // Don't add sample data - let user create their team
+    }
+    // Ensure built-in formation templates exist
+    await this.seedFormationTemplates();
+  }
+
+  /**
+   * Seed built-in formation templates if they don't exist
+   */
+  async seedFormationTemplates(): Promise<void> {
+    for (const template of DEFAULT_FORMATIONS) {
+      const existing = await this.formationTemplates.get(template.id);
+      if (!existing) {
+        await this.formationTemplates.put(template);
+        console.log(`[DB] Seeded formation template: ${template.name}`);
+      }
     }
   }
 
@@ -255,6 +297,53 @@ export class SoccerDatabase extends Dexie {
       player.isActive = false;
       await this.players.put(player);
     }
+  }
+
+  // ========================================================================
+  // Formation Template CRUD (v4.0.0)
+  // ========================================================================
+
+  /**
+   * Get all formation templates (built-in first, then custom sorted by createdAt)
+   */
+  async getFormationTemplates(): Promise<FormationTemplate[]> {
+    const all = await this.formationTemplates.toArray();
+    return all.sort((a, b) => {
+      // Built-in templates first
+      if (a.isBuiltIn && !b.isBuiltIn) return -1;
+      if (!a.isBuiltIn && b.isBuiltIn) return 1;
+      return a.createdAt - b.createdAt;
+    });
+  }
+
+  /**
+   * Get a single formation template by ID
+   */
+  async getFormationTemplate(id: string): Promise<FormationTemplate | undefined> {
+    return await this.formationTemplates.get(id);
+  }
+
+  /**
+   * Save a formation template (create or update)
+   */
+  async saveFormationTemplate(template: FormationTemplate): Promise<void> {
+    await this.formationTemplates.put(template);
+    console.log(`[DB] saveFormationTemplate: Saved '${template.name}' (${template.id})`);
+  }
+
+  /**
+   * Delete a formation template (only custom templates)
+   */
+  async deleteFormationTemplate(id: string): Promise<boolean> {
+    const template = await this.formationTemplates.get(id);
+    if (!template) return false;
+    if (template.isBuiltIn) {
+      console.warn(`[DB] Cannot delete built-in formation template: ${template.name}`);
+      return false;
+    }
+    await this.formationTemplates.delete(id);
+    console.log(`[DB] deleteFormationTemplate: Deleted '${template.name}'`);
+    return true;
   }
 
   /**

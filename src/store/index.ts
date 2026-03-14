@@ -13,12 +13,12 @@ import type {
   PositionAssignments,
   AppView,
   TimerState,
-  FormationType,
+  FormationTemplate,
   StagedSwap,
   QuarterConfig,
   QuarterState,
 } from '../types';
-import { DEFAULT_QUARTER_CONFIG, DEFAULT_QUARTER_STATE } from '../types';
+import { DEFAULT_QUARTER_CONFIG, DEFAULT_QUARTER_STATE, BUILTIN_FORMATION_A, DEFAULT_FORMATIONS } from '../types';
 import { db } from '../db';
 import {
   exportPlayersToCSV as exportCSV,
@@ -44,8 +44,11 @@ interface AppState {
   quarterConfig: QuarterConfig;
   quarterState: QuarterState;
 
-  // Formation State
-  selectedFormation: FormationType;
+  // Formation State (v4.0.0 - Flexible Formations)
+  formationTemplates: FormationTemplate[];
+  selectedFormationId: string;
+  /** Convenience getter — the currently selected template object */
+  activeFormation: FormationTemplate;
 
   // Staged Rotations State (v3.2.0 - always in planning mode, drag-drop)
   stagedSwaps: StagedSwap[];
@@ -189,18 +192,33 @@ interface AppState {
   navigateTo: (view: AppView) => void;
 
   // ========================================================================
-  // Formation Actions
+  // Formation Actions (v4.0.0 - Flexible Formations)
   // ========================================================================
 
   /**
-   * Set the selected formation (A or B)
+   * Set the active formation by template ID
    */
-  setFormation: (formation: FormationType) => Promise<void>;
+  setActiveFormation: (templateId: string) => Promise<void>;
 
   /**
-   * Load formation preference from database
+   * Load formation templates and preference from database
    */
-  loadFormationPreference: () => Promise<void>;
+  loadFormationTemplates: () => Promise<void>;
+
+  /**
+   * Save a formation template (create or update)
+   */
+  saveFormationTemplate: (template: FormationTemplate) => Promise<void>;
+
+  /**
+   * Delete a custom formation template
+   */
+  deleteFormationTemplate: (id: string) => Promise<boolean>;
+
+  /**
+   * Change formation mid-game (reassigns field players to new structure)
+   */
+  changeFormationMidGame: (templateId: string) => Promise<void>;
 
   // ========================================================================
   // Staged Rotations Actions (v3.2.0 - drag-drop based)
@@ -288,7 +306,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
   quarterConfig: DEFAULT_QUARTER_CONFIG,
   quarterState: DEFAULT_QUARTER_STATE,
-  selectedFormation: 'A',
+  formationTemplates: DEFAULT_FORMATIONS,
+  selectedFormationId: BUILTIN_FORMATION_A.id,
+  activeFormation: BUILTIN_FORMATION_A,
   stagedSwaps: [],
   isHelpOpen: false,
   activeHelpSection: null,
@@ -307,7 +327,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       await get().loadPlayers();
       await get().loadActiveGame();
       await get().loadTutorialStatus();
-      await get().loadFormationPreference();
+      await get().loadFormationTemplates();
       set({ isLoading: false });
     } catch (error) {
       set({
@@ -1010,38 +1030,187 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   // ========================================================================
-  // Formation Management
+  // Formation Management (v4.0.0 - Flexible Formations)
   // ========================================================================
 
-  setFormation: async (formation) => {
+  setActiveFormation: async (templateId) => {
     try {
-      await db.saveUserPreference('selectedFormation', formation);
-      set({ selectedFormation: formation });
-      console.log(`[Store] Formation set to ${formation}`);
+      const { formationTemplates } = get();
+      const template = formationTemplates.find(t => t.id === templateId);
+      if (!template) {
+        console.error(`[Store] Formation template not found: ${templateId}`);
+        return;
+      }
+      await db.saveUserPreference('selectedFormationId', templateId);
+      set({ selectedFormationId: templateId, activeFormation: template });
+      console.log(`[Store] Active formation set to '${template.name}' (${templateId})`);
     } catch (error) {
       console.error('[Store] Failed to save formation preference:', error);
       set({
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to save formation preference',
+        error: error instanceof Error ? error.message : 'Failed to save formation preference',
       });
     }
   },
 
-  loadFormationPreference: async () => {
+  loadFormationTemplates: async () => {
     try {
-      const formation = await db.getUserPreference('selectedFormation');
-      if (formation === 'A' || formation === 'B') {
-        set({ selectedFormation: formation });
-        console.log(`[Store] Loaded formation preference: ${formation}`);
-      } else {
-        // Default to Formation A
-        set({ selectedFormation: 'A' });
+      const templates = await db.getFormationTemplates();
+      const formationTemplates = templates.length > 0 ? templates : DEFAULT_FORMATIONS;
+
+      // Load saved preference
+      let selectedId = await db.getUserPreference('selectedFormationId');
+
+      // Legacy migration: convert 'A'/'B' to template IDs
+      if (!selectedId) {
+        const legacyFormation = await db.getUserPreference('selectedFormation');
+        if (legacyFormation === 'B') {
+          selectedId = 'builtin-3-4-1';
+        } else {
+          selectedId = BUILTIN_FORMATION_A.id;
+        }
+        await db.saveUserPreference('selectedFormationId', selectedId);
       }
+
+      // Ensure selected template exists
+      const activeTemplate = formationTemplates.find(t => t.id === selectedId) || formationTemplates[0];
+
+      set({
+        formationTemplates,
+        selectedFormationId: activeTemplate.id,
+        activeFormation: activeTemplate,
+      });
+      console.log(`[Store] Loaded ${formationTemplates.length} formation templates, active: '${activeTemplate.name}'`);
     } catch (error) {
-      console.error('[Store] Failed to load formation preference:', error);
-      set({ selectedFormation: 'A' });
+      console.error('[Store] Failed to load formation templates:', error);
+      set({
+        formationTemplates: DEFAULT_FORMATIONS,
+        selectedFormationId: BUILTIN_FORMATION_A.id,
+        activeFormation: BUILTIN_FORMATION_A,
+      });
+    }
+  },
+
+  saveFormationTemplate: async (template) => {
+    try {
+      await db.saveFormationTemplate(template);
+      const templates = await db.getFormationTemplates();
+      set({ formationTemplates: templates });
+      console.log(`[Store] Saved formation template: '${template.name}'`);
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to save formation template',
+      });
+    }
+  },
+
+  deleteFormationTemplate: async (id) => {
+    try {
+      const { selectedFormationId } = get();
+      const deleted = await db.deleteFormationTemplate(id);
+      if (!deleted) return false;
+
+      const templates = await db.getFormationTemplates();
+
+      // If we deleted the active formation, fall back to first template
+      let newState: Partial<AppState> = { formationTemplates: templates };
+      if (selectedFormationId === id) {
+        const fallback = templates[0] || BUILTIN_FORMATION_A;
+        newState = {
+          ...newState,
+          selectedFormationId: fallback.id,
+          activeFormation: fallback,
+        };
+        await db.saveUserPreference('selectedFormationId', fallback.id);
+      }
+
+      set(newState as AppState);
+      return true;
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to delete formation template',
+      });
+      return false;
+    }
+  },
+
+  changeFormationMidGame: async (templateId) => {
+    try {
+      const { formationTemplates, currentAssignments, currentGame } = get();
+      if (!currentGame) return;
+
+      const template = formationTemplates.find(t => t.id === templateId);
+      if (!template) return;
+
+      // Build new assignments: keep GK, reassign field players to new rows, keep bench
+      const newAssignments: PositionAssignments = {};
+
+      // Keep GK
+      const gkEntry = Object.entries(currentAssignments).find(([, pos]) => pos.position === 'GK');
+      if (gkEntry) {
+        newAssignments[gkEntry[0]] = { position: 'GK', slot: 0 };
+      }
+
+      // Collect current field players (non-GK, non-bench)
+      const fieldPlayerIds = Object.entries(currentAssignments)
+        .filter(([, pos]) => pos.position !== 'GK' && pos.position !== 'BENCH')
+        .map(([id]) => id);
+
+      // Collect bench players
+      const benchPlayerIds = Object.entries(currentAssignments)
+        .filter(([, pos]) => pos.position === 'BENCH')
+        .map(([id]) => id);
+
+      // Assign field players to new formation rows (top-down)
+      let fieldIdx = 0;
+      for (const row of template.rows) {
+        for (let slot = 0; slot < row.count; slot++) {
+          if (fieldIdx < fieldPlayerIds.length) {
+            newAssignments[fieldPlayerIds[fieldIdx]] = {
+              position: row.position,
+              slot,
+            };
+            fieldIdx++;
+          }
+        }
+      }
+
+      // Any remaining field players go to bench
+      let benchSlot = 0;
+      for (let i = fieldIdx; i < fieldPlayerIds.length; i++) {
+        newAssignments[fieldPlayerIds[i]] = { position: 'BENCH', slot: benchSlot++ };
+      }
+
+      // Put original bench players on bench
+      for (const id of benchPlayerIds) {
+        newAssignments[id] = { position: 'BENCH', slot: benchSlot++ };
+      }
+
+      // Create rotation entry
+      const newRotation = {
+        id: crypto.randomUUID(),
+        timestamp: new Date(),
+        assignments: newAssignments,
+      };
+
+      await db.addRotation(currentGame.id, newAssignments);
+      await db.saveUserPreference('selectedFormationId', templateId);
+
+      set({
+        currentAssignments: newAssignments,
+        currentGame: {
+          ...currentGame,
+          rotations: [...currentGame.rotations, newRotation],
+        },
+        selectedFormationId: templateId,
+        activeFormation: template,
+        stagedSwaps: [], // Clear any staged swaps
+      });
+
+      console.log(`[Store] Changed mid-game formation to '${template.name}'`);
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to change formation',
+      });
     }
   },
 
