@@ -754,6 +754,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
   pauseTimer: () => {
     const now = new Date();
     set((state) => {
+      // Guard: don't add duplicate pause period if already paused
+      if (state.timer.pausedAt && !state.timer.isRunning) {
+        return state;
+      }
+
       const newTimerState = {
         ...state.timer,
         isRunning: false,
@@ -1105,12 +1110,14 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
     try {
       // Execute all swaps simultaneously by building new assignments
-      // With PlayerPosition, we swap the complete objects (position + slot)
-      let newAssignments = { ...currentAssignments };
+      // IMPORTANT: Snapshot original positions before any mutations to avoid
+      // overlapping swaps reading mutated state (e.g., A↔B then B↔C)
+      const originalAssignments = { ...currentAssignments };
+      const newAssignments = { ...currentAssignments };
 
       for (const swap of stagedSwaps) {
-        const pos1 = newAssignments[swap.player1Id];
-        const pos2 = newAssignments[swap.player2Id];
+        const pos1 = originalAssignments[swap.player1Id];
+        const pos2 = originalAssignments[swap.player2Id];
         // Swap complete PlayerPosition objects (includes slot)
         newAssignments[swap.player1Id] = pos2;
         newAssignments[swap.player2Id] = pos1;

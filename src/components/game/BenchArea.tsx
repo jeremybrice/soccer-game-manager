@@ -120,17 +120,15 @@ export default function BenchArea({
               {/* Ghost overlay - shows incoming player */}
               {ghostPlayer && (
                 <div
-                  className="absolute inset-0"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (swapId) onGhostTap(swapId);
-                  }}
+                  className="absolute inset-0 pointer-events-none"
                 >
-                  <PlayerCard
-                    player={ghostPlayer}
-                    isGhost={true}
-                    onClick={swapId ? () => onGhostTap(swapId) : undefined}
-                  />
+                  <div className="pointer-events-auto">
+                    <PlayerCard
+                      player={ghostPlayer}
+                      isGhost={true}
+                      onClick={swapId ? () => onGhostTap(swapId) : undefined}
+                    />
+                  </div>
                 </div>
               )}
             </div>
