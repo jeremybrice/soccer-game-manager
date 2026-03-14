@@ -67,11 +67,12 @@ export default function FieldFormation({
       };
     }
 
-    // If both are on field (field-to-field swap), show faded with ghost
+    // If both are on field (field-to-field swap), show ghost but don't fade
+    // Both players stay on field so fading both is confusing
     if (partnerPos?.position !== 'BENCH' && playerPos?.position !== 'BENCH') {
       const partnerPlayer = players.find((p) => p.id === partnerId);
       return {
-        isFadedOut: true,
+        isFadedOut: false,
         ghostPlayer: partnerPlayer || null,
         swapId: swap.id,
       };
@@ -140,17 +141,15 @@ export default function FieldFormation({
                 {/* Ghost overlay - shows incoming player */}
                 {ghostPlayer && (
                   <div
-                    className="absolute inset-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (swapId) onGhostTap(swapId);
-                    }}
+                    className="absolute inset-0 pointer-events-none"
                   >
-                    <PlayerCard
-                      player={ghostPlayer}
-                      isGhost={true}
-                      onClick={swapId ? () => onGhostTap(swapId) : undefined}
-                    />
+                    <div className="pointer-events-auto">
+                      <PlayerCard
+                        player={ghostPlayer}
+                        isGhost={true}
+                        onClick={swapId ? () => onGhostTap(swapId) : undefined}
+                      />
+                    </div>
                   </div>
                 )}
               </div>
@@ -189,17 +188,15 @@ export default function FieldFormation({
                 {/* Ghost overlay - shows incoming player */}
                 {ghostPlayer && (
                   <div
-                    className="absolute inset-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (swapId) onGhostTap(swapId);
-                    }}
+                    className="absolute inset-0 pointer-events-none"
                   >
-                    <PlayerCard
-                      player={ghostPlayer}
-                      isGhost={true}
-                      onClick={swapId ? () => onGhostTap(swapId) : undefined}
-                    />
+                    <div className="pointer-events-auto">
+                      <PlayerCard
+                        player={ghostPlayer}
+                        isGhost={true}
+                        onClick={swapId ? () => onGhostTap(swapId) : undefined}
+                      />
+                    </div>
                   </div>
                 )}
               </div>
@@ -238,17 +235,15 @@ export default function FieldFormation({
                 {/* Ghost overlay - shows incoming player */}
                 {ghostPlayer && (
                   <div
-                    className="absolute inset-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (swapId) onGhostTap(swapId);
-                    }}
+                    className="absolute inset-0 pointer-events-none"
                   >
-                    <PlayerCard
-                      player={ghostPlayer}
-                      isGhost={true}
-                      onClick={swapId ? () => onGhostTap(swapId) : undefined}
-                    />
+                    <div className="pointer-events-auto">
+                      <PlayerCard
+                        player={ghostPlayer}
+                        isGhost={true}
+                        onClick={swapId ? () => onGhostTap(swapId) : undefined}
+                      />
+                    </div>
                   </div>
                 )}
               </div>
@@ -288,17 +283,15 @@ export default function FieldFormation({
                   {/* Ghost overlay - shows incoming player */}
                   {ghostPlayer && (
                     <div
-                      className="absolute inset-0"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (swapId) onGhostTap(swapId);
-                      }}
+                      className="absolute inset-0 pointer-events-none"
                     >
-                      <PlayerCard
-                        player={ghostPlayer}
-                        isGhost={true}
-                        onClick={swapId ? () => onGhostTap(swapId) : undefined}
-                      />
+                      <div className="pointer-events-auto">
+                        <PlayerCard
+                          player={ghostPlayer}
+                          isGhost={true}
+                          onClick={swapId ? () => onGhostTap(swapId) : undefined}
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
