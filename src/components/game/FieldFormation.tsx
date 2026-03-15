@@ -1,13 +1,14 @@
 /**
- * Field Formation Component
+ * Field Formation Component (v4.0.0 - Flexible Formations)
  *
  * Philosophy: Visual clarity. The formation should mirror reality.
  * Portrait layout: Forwards at top, GK at bottom (attacking downward).
+ * Renders rows dynamically from the active formation template.
  * Tap-to-select enabled for staging swaps with ghost previews.
  */
 
 import type { Player, Position, PositionAssignments, StagedSwap } from '../../types';
-import { FORMATION_A, FORMATION_B } from '../../types';
+import { generateRowLabels } from '../../types';
 import { useAppStore } from '../../store';
 import PlayerCard from './PlayerCard';
 
@@ -20,6 +21,7 @@ interface FieldFormationProps {
   selectedPlayerId: string | null;
   onPlayerTap: (playerId: string) => void;
   onGhostTap: (swapId: string) => void;
+  onEmptySlotTap?: (position: Position, slot: number) => void;
 }
 
 export default function FieldFormation({
@@ -31,11 +33,9 @@ export default function FieldFormation({
   selectedPlayerId,
   onPlayerTap,
   onGhostTap,
+  onEmptySlotTap,
 }: FieldFormationProps) {
-  const { selectedFormation } = useAppStore();
-
-  // Get current formation configuration
-  const formationConfig = selectedFormation === 'A' ? FORMATION_A : FORMATION_B;
+  const { activeFormation } = useAppStore();
 
   // Check if a player is staged to move and get ghost info
   const getPlayerSwapInfo = (playerId: string): {
@@ -51,13 +51,10 @@ export default function FieldFormation({
       return { isFadedOut: false, ghostPlayer: null, swapId: null };
     }
 
-    // Get the partner in this swap
     const partnerId = swap.player1Id === playerId ? swap.player2Id : swap.player1Id;
     const partnerPos = assignments[partnerId];
     const playerPos = assignments[playerId];
 
-    // If partner is on bench, this field player is going to bench (faded)
-    // and the partner (bench player) will appear as ghost here
     if (partnerPos?.position === 'BENCH' && playerPos?.position !== 'BENCH') {
       const partnerPlayer = players.find((p) => p.id === partnerId);
       return {
@@ -67,8 +64,6 @@ export default function FieldFormation({
       };
     }
 
-    // If both are on field (field-to-field swap), show ghost but don't fade
-    // Both players stay on field so fading both is confusing
     if (partnerPos?.position !== 'BENCH' && playerPos?.position !== 'BENCH') {
       const partnerPlayer = players.find((p) => p.id === partnerId);
       return {
@@ -96,20 +91,36 @@ export default function FieldFormation({
   };
 
   const gk = getPlayersAtPosition('GK')[0];
-  const defenders = getPlayersAtPosition('DEF');
-  const midfielders = getPlayersAtPosition('MID');
-  const forwards = getPlayersAtPosition('FWD');
 
-  // Position labels based on array index and formation
-  const forwardLabels = selectedFormation === 'A'
-    ? ['LF', 'RF']
-    : ['CF'];
-
-  const midfieldLabels = selectedFormation === 'A'
-    ? ['LM', 'CM', 'RM']
-    : ['LM', 'CLM', 'CRM', 'RM'];
-
-  const defenseLabels = ['LD', 'CD', 'RD'];
+  // Render a player card with ghost overlay support
+  const renderPlayerCard = (player: Player, positionLabel: string) => {
+    const { isFadedOut, ghostPlayer, swapId } = getPlayerSwapInfo(player.id);
+    return (
+      <div key={player.id} className="relative">
+        <PlayerCard
+          player={player}
+          variant="field"
+          minutesAtPosition={getPlayerMinutes(player.id)}
+          positionLabel={positionLabel}
+          isAlerted={alertedPlayers.has(player.id)}
+          isSelected={selectedPlayerId === player.id}
+          isFadedOut={isFadedOut}
+          onClick={() => onPlayerTap(player.id)}
+        />
+        {ghostPlayer && (
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="pointer-events-auto">
+              <PlayerCard
+                player={ghostPlayer}
+                isGhost={true}
+                onClick={swapId ? () => onGhostTap(swapId) : undefined}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="h-full flex flex-col justify-between py-4 relative">
@@ -118,148 +129,55 @@ export default function FieldFormation({
         <div className="text-[200px] select-none">🛡️</div>
       </div>
 
-      {/* Forwards - Now at top */}
-      <div>
-        <div className="text-white/70 text-xs font-semibold mb-1 text-center uppercase tracking-wide">
-          Forward
-        </div>
-        <div className="flex justify-center space-x-8">
-          {forwards.map((player, index) => {
-            const { isFadedOut, ghostPlayer, swapId } = getPlayerSwapInfo(player.id);
-            return (
-              <div key={player.id} className="relative">
-                <PlayerCard
-                  player={player}
-                  variant="field"
-                  minutesAtPosition={getPlayerMinutes(player.id)}
-                  positionLabel={forwardLabels[index]}
-                  isAlerted={alertedPlayers.has(player.id)}
-                  isSelected={selectedPlayerId === player.id}
-                  isFadedOut={isFadedOut}
-                  onClick={() => onPlayerTap(player.id)}
-                />
-                {/* Ghost overlay - shows incoming player */}
-                {ghostPlayer && (
-                  <div
-                    className="absolute inset-0 pointer-events-none"
-                  >
-                    <div className="pointer-events-auto">
-                      <PlayerCard
-                        player={ghostPlayer}
-                        isGhost={true}
-                        onClick={swapId ? () => onGhostTap(swapId) : undefined}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          {/* Fill empty spots */}
-          {Array.from({ length: formationConfig.FWD - forwards.length }).map((_, i) => (
-            <div
-              key={`fwd-empty-${i}`}
-              className="w-20 h-20 bg-white/20 rounded-xl border-2 border-dashed border-white/40"
-            />
-          ))}
-        </div>
-      </div>
+      {/* Dynamic formation rows (top-to-bottom: FWD → MID → DEF) */}
+      {activeFormation.rows.map((row, rowIndex) => {
+        const labels = generateRowLabels(row);
+        // Calculate slot offset for rows with same position type
+        const samePositionRowsBefore = activeFormation.rows
+          .slice(0, rowIndex)
+          .filter(r => r.position === row.position)
+          .reduce((sum, r) => sum + r.count, 0);
 
-      {/* Midfielders */}
-      <div>
-        <div className="text-white/70 text-xs font-semibold mb-1 text-center uppercase tracking-wide">
-          Midfield
-        </div>
-        <div className="flex justify-around px-4">
-          {midfielders.map((player, index) => {
-            const { isFadedOut, ghostPlayer, swapId } = getPlayerSwapInfo(player.id);
-            return (
-              <div key={player.id} className="relative">
-                <PlayerCard
-                  player={player}
-                  variant="field"
-                  minutesAtPosition={getPlayerMinutes(player.id)}
-                  positionLabel={midfieldLabels[index]}
-                  isAlerted={alertedPlayers.has(player.id)}
-                  isSelected={selectedPlayerId === player.id}
-                  isFadedOut={isFadedOut}
-                  onClick={() => onPlayerTap(player.id)}
-                />
-                {/* Ghost overlay - shows incoming player */}
-                {ghostPlayer && (
-                  <div
-                    className="absolute inset-0 pointer-events-none"
-                  >
-                    <div className="pointer-events-auto">
-                      <PlayerCard
-                        player={ghostPlayer}
-                        isGhost={true}
-                        onClick={swapId ? () => onGhostTap(swapId) : undefined}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          {/* Fill empty spots */}
-          {Array.from({ length: formationConfig.MID - midfielders.length }).map((_, i) => (
-            <div
-              key={`mid-empty-${i}`}
-              className="w-20 h-20 bg-white/20 rounded-xl border-2 border-dashed border-white/40"
-            />
-          ))}
-        </div>
-      </div>
+        const playersInRow = getPlayersAtPosition(row.position)
+          .slice(samePositionRowsBefore, samePositionRowsBefore + row.count);
 
-      {/* Defenders (3) */}
-      <div>
-        <div className="text-white/70 text-xs font-semibold mb-1 text-center uppercase tracking-wide">
-          Defense
-        </div>
-        <div className="flex justify-around px-4">
-          {defenders.map((player, index) => {
-            const { isFadedOut, ghostPlayer, swapId } = getPlayerSwapInfo(player.id);
-            return (
-              <div key={player.id} className="relative">
-                <PlayerCard
-                  player={player}
-                  variant="field"
-                  minutesAtPosition={getPlayerMinutes(player.id)}
-                  positionLabel={defenseLabels[index]}
-                  isAlerted={alertedPlayers.has(player.id)}
-                  isSelected={selectedPlayerId === player.id}
-                  isFadedOut={isFadedOut}
-                  onClick={() => onPlayerTap(player.id)}
-                />
-                {/* Ghost overlay - shows incoming player */}
-                {ghostPlayer && (
-                  <div
-                    className="absolute inset-0 pointer-events-none"
-                  >
-                    <div className="pointer-events-auto">
-                      <PlayerCard
-                        player={ghostPlayer}
-                        isGhost={true}
-                        onClick={swapId ? () => onGhostTap(swapId) : undefined}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          {/* Fill empty spots */}
-          {Array.from({ length: 3 - defenders.length }).map((_, i) => (
-            <div
-              key={`def-empty-${i}`}
-              className="w-20 h-20 bg-white/20 rounded-xl border-2 border-dashed border-white/40"
-            />
-          ))}
-        </div>
-      </div>
+        const positionName = row.position === 'FWD' ? 'Forward' :
+          row.position === 'MID' ? 'Midfield' : 'Defense';
 
-      {/* Goalkeeper - Now at bottom */}
+        return (
+          <div key={rowIndex}>
+            <div className="text-white/70 text-xs font-semibold mb-1 text-center uppercase tracking-wide">
+              {positionName}
+            </div>
+            <div className={`flex ${row.count <= 3 ? 'justify-center space-x-8' : 'justify-around px-4'}`}>
+              {playersInRow.map((player, index) =>
+                renderPlayerCard(player, labels[index])
+              )}
+              {/* Fill empty spots - tappable when a bench player is selected */}
+              {Array.from({ length: row.count - playersInRow.length }).map((_, i) => {
+                const emptySlot = samePositionRowsBefore + playersInRow.length + i;
+                return (
+                  <button
+                    key={`empty-${rowIndex}-${i}`}
+                    onClick={() => onEmptySlotTap?.(row.position, emptySlot)}
+                    className={`w-20 h-20 bg-white/20 rounded-xl border-2 border-dashed transition-all ${
+                      selectedPlayerId
+                        ? 'border-green-400 bg-green-400/20 active:bg-green-400/40'
+                        : 'border-white/40'
+                    }`}
+                  >
+                    {selectedPlayerId && (
+                      <span className="text-white/70 text-xs font-semibold">+</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Goalkeeper - Always at bottom */}
       <div className="flex justify-center">
         <div className="text-center">
           <div className="text-white/70 text-xs font-semibold mb-1 uppercase tracking-wide">
@@ -280,11 +198,8 @@ export default function FieldFormation({
                     isFadedOut={isFadedOut}
                     onClick={() => onPlayerTap(gk.id)}
                   />
-                  {/* Ghost overlay - shows incoming player */}
                   {ghostPlayer && (
-                    <div
-                      className="absolute inset-0 pointer-events-none"
-                    >
+                    <div className="absolute inset-0 pointer-events-none">
                       <div className="pointer-events-auto">
                         <PlayerCard
                           player={ghostPlayer}
@@ -298,9 +213,16 @@ export default function FieldFormation({
               );
             })()
           ) : (
-            <div className="w-20 h-20 bg-white/20 rounded-xl border-2 border-dashed border-white/40 flex items-center justify-center">
-              <span className="text-white/50 text-xs">Empty</span>
-            </div>
+            <button
+              onClick={() => onEmptySlotTap?.('GK', 0)}
+              className={`w-20 h-20 bg-white/20 rounded-xl border-2 border-dashed flex items-center justify-center transition-all ${
+                selectedPlayerId
+                  ? 'border-green-400 bg-green-400/20 active:bg-green-400/40'
+                  : 'border-white/40'
+              }`}
+            >
+              <span className="text-white/50 text-xs">{selectedPlayerId ? '+' : 'Empty'}</span>
+            </button>
           )}
         </div>
       </div>

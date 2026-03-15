@@ -65,19 +65,30 @@ export default function HomeView() {
           </button>
         )}
 
-        {/* Manage Roster */}
-        <button
-          data-tour="roster-button"
-          onClick={() => navigateTo('roster')}
-          className="w-full touch-target bg-raiders-navy-light hover:bg-raiders-navy text-white font-semibold py-6 px-8 rounded-2xl border-2 border-white/30 shadow-lg transform transition hover:scale-105 active:scale-95"
-        >
-          <div className="text-xl mb-1">Manage Roster</div>
-          <div className="text-sm opacity-90">
-            {players.length === 0
-              ? 'Add your players'
-              : `${players.length} players`}
-          </div>
-        </button>
+        {/* Roster & Formations - side by side */}
+        <div className="flex gap-3">
+          <button
+            data-tour="roster-button"
+            onClick={() => navigateTo('roster')}
+            className="flex-1 touch-target bg-raiders-navy-light hover:bg-raiders-navy text-white font-semibold py-5 px-4 rounded-2xl border-2 border-white/30 shadow-lg transform transition hover:scale-105 active:scale-95"
+          >
+            <div className="text-lg mb-1">Roster</div>
+            <div className="text-xs opacity-90">
+              {players.length === 0
+                ? 'Add players'
+                : `${players.length} players`}
+            </div>
+          </button>
+
+          <button
+            data-tour="formations-button"
+            onClick={() => navigateTo('formations')}
+            className="flex-1 touch-target bg-raiders-navy-light hover:bg-raiders-navy text-white font-semibold py-5 px-4 rounded-2xl border-2 border-white/30 shadow-lg transform transition hover:scale-105 active:scale-95"
+          >
+            <div className="text-lg mb-1">Formations</div>
+            <div className="text-xs opacity-90">Create & edit</div>
+          </button>
+        </div>
 
         {/* View Stats */}
         <button
@@ -102,7 +113,7 @@ export default function HomeView() {
 
       {/* Footer */}
       <div className="mt-12 text-white/60 text-sm text-center">
-        <p className="text-white/40 text-xs mt-1">v3.4.1 · St. Pete Raiders Edition</p>
+        <p className="text-white/40 text-xs mt-1">v4.0.0 · St. Pete Raiders Edition</p>
       </div>
     </div>
   );

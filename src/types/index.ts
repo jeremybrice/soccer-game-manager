@@ -33,35 +33,121 @@ export interface PlayerPosition {
                        // BENCH: 0-4 (tracks bench order for rotation strategies)
 }
 
+// ============================================================================
+// Formation Template Types (v4.0.0 - Flexible Formations)
+// ============================================================================
+
 /**
- * Formation configuration - immutable structures
- * Formation A: 3-3-2-1 (3 DEF, 3 MID, 2 FWD, 1 GK)
- * Formation B: 3-4-1-1 (3 DEF, 4 MID, 1 FWD, 1 GK)
+ * A single row in a formation (e.g., 3 defenders, 2 forwards)
+ * Labels are optional — auto-generated from position and count if omitted
  */
-export const FORMATION_A = {
-  GK: 1,
-  DEF: 3,
-  MID: 3,
-  FWD: 2,
-  BENCH: 5, // 14 total - 9 on field = 5 on bench
-} as const;
+export interface FormationRow {
+  position: Position;         // DEF, MID, or FWD
+  count: number;              // How many players in this row
+  labels?: string[];          // Optional custom labels (auto-generated if omitted)
+}
 
-export const FORMATION_B = {
-  GK: 1,
-  DEF: 3,
-  MID: 4,
-  FWD: 1,
-  BENCH: 5, // 14 total - 9 on field = 5 on bench
-} as const;
+/**
+ * A saved formation template
+ * GK is always 1 and rendered separately — not part of rows.
+ * Bench count is dynamic: totalActivePlayers - (1 + sum(row.count))
+ */
+export interface FormationTemplate {
+  id: string;
+  name: string;
+  rows: FormationRow[];       // Ordered top-to-bottom (FWD first → DEF last)
+  createdAt: number;
+  isBuiltIn?: boolean;        // Legacy field, no longer restricts deletion
+}
 
-// Legacy export for backward compatibility
+/**
+ * Get the total number of field players (excluding GK) in a formation template
+ */
+export const getFormationFieldCount = (template: FormationTemplate): number => {
+  return template.rows.reduce((sum, row) => sum + row.count, 0);
+};
+
+/**
+ * Get a compact structure string for a formation (e.g., "3-3-2")
+ * Rows are displayed in reverse order (DEF first) to match soccer convention
+ */
+export const getFormationStructure = (template: FormationTemplate): string => {
+  return [...template.rows].reverse().map(row => row.count).join('-');
+};
+
+/**
+ * Auto-generate position labels for a formation row based on count
+ * 1: C prefix (CF, CM, CD)
+ * 2: L prefix, R prefix
+ * 3: L prefix, C prefix, R prefix
+ * 4: L prefix, CL prefix, CR prefix, R prefix
+ * 5+: prefix + slot number
+ */
+export const generateRowLabels = (row: FormationRow): string[] => {
+  if (row.labels && row.labels.length === row.count) return row.labels;
+
+  const prefixMap: Record<string, string> = { DEF: 'D', MID: 'M', FWD: 'F' };
+  const p = prefixMap[row.position] || row.position[0];
+
+  switch (row.count) {
+    case 1: return [`C${p}`];
+    case 2: return [`L${p}`, `R${p}`];
+    case 3: return [`L${p}`, `C${p}`, `R${p}`];
+    case 4: return [`L${p}`, `CL${p}`, `CR${p}`, `R${p}`];
+    default: return Array.from({ length: row.count }, (_, i) => `${p}${i + 1}`);
+  }
+};
+
+/**
+ * Get a formation config object (legacy-compatible: { GK, DEF, MID, FWD })
+ * Sums all rows by position category for components that need slot counts per position
+ */
+export const getFormationConfig = (template: FormationTemplate): Record<Position, number> => {
+  const config: Record<Position, number> = { GK: 1, DEF: 0, MID: 0, FWD: 0, BENCH: 0 };
+  for (const row of template.rows) {
+    config[row.position] += row.count;
+  }
+  return config;
+};
+
+// ============================================================================
+// Built-in Formation Templates
+// ============================================================================
+
+export const BUILTIN_FORMATION_A: FormationTemplate = {
+  id: 'builtin-3-3-2',
+  name: '3-3-2',
+  rows: [
+    { position: 'FWD', count: 2, labels: ['LF', 'RF'] },
+    { position: 'MID', count: 3, labels: ['LM', 'CM', 'RM'] },
+    { position: 'DEF', count: 3, labels: ['LD', 'CD', 'RD'] },
+  ],
+  createdAt: 0,
+};
+
+export const BUILTIN_FORMATION_B: FormationTemplate = {
+  id: 'builtin-3-4-1',
+  name: '3-4-1',
+  rows: [
+    { position: 'FWD', count: 1, labels: ['CF'] },
+    { position: 'MID', count: 4, labels: ['LM', 'CLM', 'CRM', 'RM'] },
+    { position: 'DEF', count: 3, labels: ['LD', 'CD', 'RD'] },
+  ],
+  createdAt: 0,
+};
+
+export const DEFAULT_FORMATIONS: FormationTemplate[] = [
+  BUILTIN_FORMATION_A,
+  BUILTIN_FORMATION_B,
+];
+
+// Legacy constants kept for backward compatibility during migration
+export const FORMATION_A = { GK: 1, DEF: 3, MID: 3, FWD: 2, BENCH: 5 } as const;
+export const FORMATION_B = { GK: 1, DEF: 3, MID: 4, FWD: 1, BENCH: 5 } as const;
 export const FORMATION = FORMATION_A;
-
 export type FormationType = 'A' | 'B';
 
-export const TOTAL_PLAYERS = 14;
-export const FIELD_PLAYERS = 9;
-export const MIN_PLAYERS_TO_START = 7; // 1 GK + 6 field players
+export const MIN_PLAYERS_TO_START = 4; // 1 GK + 3 field players minimum
 export const RECOMMENDED_MIN_PLAYERS = 9; // Show warning below this
 
 // ============================================================================
@@ -174,7 +260,7 @@ export interface FairnessMetrics {
 /**
  * Current view in the application
  */
-export type AppView = 'home' | 'roster' | 'game' | 'stats' | 'settings';
+export type AppView = 'home' | 'roster' | 'game' | 'stats' | 'settings' | 'formations';
 
 /**
  * Represents a single pause period during a game
@@ -273,16 +359,27 @@ export const getPositionShort = (pos: Position): string => {
 
 /**
  * Get slot label for a specific position and slot index
- * Returns the display label (e.g., "LM", "CM", "RM") based on formation
+ * Accepts either a FormationTemplate (new) or FormationType (legacy)
  */
 export const getSlotLabel = (
   position: Position,
   slot: number,
-  formation: FormationType
+  formation: FormationTemplate | FormationType
 ): string => {
   if (position === 'GK') return 'GK';
   if (position === 'BENCH') return 'BENCH';
 
+  // New template-based label resolution
+  if (typeof formation === 'object' && 'rows' in formation) {
+    const row = formation.rows.find(r => r.position === position);
+    if (row) {
+      const labels = generateRowLabels(row);
+      return labels[slot] || `${position}${slot}`;
+    }
+    return `${position}${slot}`;
+  }
+
+  // Legacy FormationType support
   if (position === 'DEF') {
     const labels = ['LD', 'CD', 'RD'];
     return labels[slot] || `DEF${slot}`;

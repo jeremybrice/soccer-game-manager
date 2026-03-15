@@ -9,7 +9,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAppStore } from '../../store';
 import { formatTime } from '../../utils/stats';
-import type { GameSession, TimerState, PausePeriod } from '../../types';
+import type { GameSession, TimerState, PausePeriod, Position } from '../../types';
+import { getFormationStructure } from '../../types';
 import FieldFormation from './FieldFormation';
 import BenchArea from './BenchArea';
 import FormationSetupView from './FormationSetupView';
@@ -113,11 +114,17 @@ export default function GameView() {
     quarterConfig,
     continueQuarter,
     startNextQuarter,
+    // Formation management (v4.0.0)
+    formationTemplates,
+    activeFormation,
+    changeFormationMidGame,
+    movePlayerToPosition,
   } = useAppStore();
 
   const [alertedPlayers, setAlertedPlayers] = useState<Set<string>>(new Set());
   const [showQuarterModal, setShowQuarterModal] = useState(false);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [showFormationPicker, setShowFormationPicker] = useState(false);
 
   // Memoized player calculations
   const playerZoneMinutes = useMemo(() => {
@@ -196,6 +203,18 @@ export default function GameView() {
     }
   };
 
+  // Handle tapping an empty field slot — move selected bench player there
+  const handleEmptySlotTap = async (position: Position, slot: number) => {
+    if (!selectedPlayerId) return;
+
+    // Only allow moving bench players to empty slots
+    const playerPos = currentAssignments[selectedPlayerId];
+    if (!playerPos || playerPos.position !== 'BENCH') return;
+
+    await movePlayerToPosition(selectedPlayerId, position, slot);
+    setSelectedPlayerId(null);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
         {/* Header with Quarter Timer (v3.1.0) */}
@@ -269,10 +288,14 @@ export default function GameView() {
                 <div className="w-3 h-3 rounded-full bg-red-500"></div>
                 <span className="text-white/90 text-xs font-medium">&gt;15m</span>
               </div>
-              {/* Tap hint */}
-              <div className="flex items-center space-x-1 border-l border-white/30 pl-3">
-                <span className="text-white/70 text-xs">Tap to swap</span>
-              </div>
+              {/* Formation change button */}
+              <button
+                onClick={() => setShowFormationPicker(true)}
+                className="flex items-center space-x-1 border-l border-white/30 pl-3 hover:bg-white/10 rounded px-2 py-0.5 -my-1"
+              >
+                <span className="text-white/90 text-xs font-semibold">{activeFormation.name}</span>
+                <span className="text-white/60 text-[10px]">▼</span>
+              </button>
             </div>
 
             <FieldFormation
@@ -284,6 +307,7 @@ export default function GameView() {
               selectedPlayerId={selectedPlayerId}
               onPlayerTap={handlePlayerTap}
               onGhostTap={handleGhostTap}
+              onEmptySlotTap={handleEmptySlotTap}
             />
           </div>
 
@@ -307,6 +331,63 @@ export default function GameView() {
             />
           )}
         </div>
+
+        {/* Mid-Game Formation Picker Modal (v4.0.0) */}
+        {showFormationPicker && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-end justify-center">
+            <div className="bg-white rounded-t-2xl w-full max-w-md max-h-[70vh] overflow-y-auto shadow-2xl">
+              <div className="bg-raiders-navy text-white px-5 py-4 rounded-t-2xl flex items-center justify-between">
+                <h2 className="text-lg font-bold">Change Formation</h2>
+                <button
+                  onClick={() => setShowFormationPicker(false)}
+                  className="touch-target text-white/80 hover:text-white text-xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="p-4 space-y-2">
+                <p className="text-sm text-gray-500 mb-3">
+                  Players will be reassigned to fit the new formation. GK stays. Bench stays.
+                </p>
+                {formationTemplates.map((template) => {
+                  const isActive = template.id === activeFormation.id;
+                  const structure = getFormationStructure(template);
+                  return (
+                    <button
+                      key={template.id}
+                      onClick={async () => {
+                        if (!isActive) {
+                          await changeFormationMidGame(template.id);
+                        }
+                        setShowFormationPicker(false);
+                      }}
+                      className={`w-full touch-target p-4 rounded-xl border-2 text-left flex items-center justify-between transition ${
+                        isActive
+                          ? 'bg-raiders-red/10 border-raiders-red text-raiders-red'
+                          : 'bg-white border-gray-200 text-gray-700 hover:border-raiders-red'
+                      }`}
+                    >
+                      <div>
+                        <div className="font-bold text-base">{template.name}</div>
+                        <div className="text-sm opacity-70">{structure} + GK</div>
+                      </div>
+                      <div className="flex gap-0.5">
+                        {template.rows.map((row, ri) => (
+                          <div key={ri} className="flex flex-col items-center gap-px">
+                            {Array(row.count).fill(0).map((_, i) => (
+                              <div key={i} className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-raiders-red' : 'bg-gray-400'}`} />
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                      {isActive && <span className="text-raiders-red font-bold">✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Quarter End Overlay - Shows for auto-stop (when paused) or manual stop (v3.1.0) */}
         {((quarterState.isAutoStopped && !timer.isRunning) || showQuarterModal) && (
