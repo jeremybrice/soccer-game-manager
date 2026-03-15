@@ -72,18 +72,28 @@ export default function FormationBuilder({
   const autoName = getFormationStructure({ id: '', name: '', rows, createdAt: 0, isBuiltIn: false });
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
-        {/* Header */}
-        <div className="bg-raiders-navy text-white px-5 py-4 rounded-t-2xl">
+    <div className="fixed inset-0 bg-raiders-navy z-50 flex flex-col">
+      {/* Header */}
+      <div className="bg-raiders-navy text-white px-5 py-4 shadow-lg shrink-0">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={onCancel}
+            className="touch-target text-white/90 active:text-white font-semibold"
+          >
+            Cancel
+          </button>
           <h2 className="text-lg font-bold">
             {initialTemplate ? 'Edit Formation' : 'New Formation'}
           </h2>
+          <div className="w-16" />
         </div>
+      </div>
 
-        <div className="p-5 space-y-5">
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto bg-gray-100">
+        <div className="p-4 space-y-4 max-w-md mx-auto">
           {/* Name Input */}
-          <div>
+          <div className="bg-white rounded-xl p-4 shadow-sm">
             <label className="block text-sm font-semibold text-gray-700 mb-1">
               Formation Name
             </label>
@@ -97,7 +107,7 @@ export default function FormationBuilder({
           </div>
 
           {/* Position Rows Editor */}
-          <div>
+          <div className="bg-white rounded-xl p-4 shadow-sm">
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Position Rows
             </label>
@@ -105,14 +115,14 @@ export default function FormationBuilder({
               {rows.map((row, index) => (
                 <div
                   key={index}
-                  className="bg-gray-50 rounded-xl p-3 border-2 border-gray-200"
+                  className="bg-gray-50 rounded-xl p-3 border border-gray-200"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     {/* Position selector */}
                     <select
                       value={row.position}
                       onChange={(e) => updateRow(index, { position: e.target.value as Position, labels: undefined })}
-                      className="flex-1 px-3 py-2 bg-white border-2 border-gray-300 rounded-lg font-semibold text-sm focus:border-raiders-red focus:outline-none"
+                      className="w-28 px-2 py-2 bg-white border-2 border-gray-300 rounded-lg font-semibold text-sm focus:border-raiders-red focus:outline-none"
                     >
                       {POSITION_OPTIONS.map(opt => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -120,19 +130,19 @@ export default function FormationBuilder({
                     </select>
 
                     {/* Count with +/- buttons */}
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 flex-1 justify-center">
                       <button
                         onClick={() => updateRow(index, { count: Math.max(1, row.count - 1), labels: undefined })}
-                        className="touch-target w-10 h-10 bg-gray-200 rounded-lg font-bold text-xl flex items-center justify-center active:bg-gray-300"
+                        className="touch-target w-11 h-11 bg-gray-200 rounded-lg font-bold text-xl flex items-center justify-center active:bg-gray-300"
                       >
                         -
                       </button>
-                      <div className="w-10 h-10 flex items-center justify-center font-bold text-xl">
+                      <div className="w-10 h-11 flex items-center justify-center font-bold text-xl">
                         {row.count}
                       </div>
                       <button
                         onClick={() => updateRow(index, { count: Math.min(7, row.count + 1), labels: undefined })}
-                        className="touch-target w-10 h-10 bg-gray-200 rounded-lg font-bold text-xl flex items-center justify-center active:bg-gray-300"
+                        className="touch-target w-11 h-11 bg-gray-200 rounded-lg font-bold text-xl flex items-center justify-center active:bg-gray-300"
                       >
                         +
                       </button>
@@ -142,7 +152,7 @@ export default function FormationBuilder({
                     {rows.length > 1 && (
                       <button
                         onClick={() => removeRow(index)}
-                        className="touch-target w-10 h-10 text-red-500 rounded-lg font-bold text-lg flex items-center justify-center hover:bg-red-50"
+                        className="touch-target w-11 h-11 bg-red-50 text-red-600 rounded-lg font-bold text-lg flex items-center justify-center active:bg-red-100 border border-red-200"
                       >
                         ×
                       </button>
@@ -167,18 +177,19 @@ export default function FormationBuilder({
             {/* Add Row Button */}
             <button
               onClick={addRow}
-              className="w-full mt-3 touch-target py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 font-semibold hover:border-raiders-red hover:text-raiders-red transition"
+              className="w-full mt-3 touch-target py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 font-semibold active:border-raiders-red active:text-raiders-red transition"
             >
               + Add Row
             </button>
           </div>
 
           {/* Live Preview */}
-          <div className="bg-gradient-to-b from-field-light to-field rounded-xl p-4 min-h-[160px]">
-            <div className="flex flex-col justify-between h-full space-y-3">
+          <div className="bg-gradient-to-b from-field-light to-field rounded-xl p-4 shadow-sm">
+            <div className="text-white/70 text-xs font-semibold text-center mb-2 uppercase tracking-wide">Preview</div>
+            <div className="flex flex-col justify-between space-y-2">
               {rows.map((row, rowIndex) => (
                 <div key={rowIndex}>
-                  <div className="text-white/60 text-[10px] font-semibold text-center uppercase tracking-wide mb-1">
+                  <div className="text-white/50 text-[10px] font-semibold text-center uppercase tracking-wide mb-1">
                     {POSITION_OPTIONS.find(p => p.value === row.position)?.label}
                   </div>
                   <div className="flex justify-center gap-2">
@@ -195,7 +206,7 @@ export default function FormationBuilder({
               ))}
               {/* GK always shown */}
               <div>
-                <div className="text-white/60 text-[10px] font-semibold text-center uppercase tracking-wide mb-1">
+                <div className="text-white/50 text-[10px] font-semibold text-center uppercase tracking-wide mb-1">
                   Goalkeeper
                 </div>
                 <div className="flex justify-center">
@@ -208,35 +219,40 @@ export default function FormationBuilder({
           </div>
 
           {/* Summary */}
-          <div className="flex justify-between items-center px-2">
+          <div className="bg-white rounded-xl px-4 py-3 shadow-sm flex justify-between items-center">
             <span className="text-gray-600 font-medium">
-              Field Players: <span className="font-bold text-field-dark">{totalFieldPlayers}</span> + GK
+              Field: <span className="font-bold text-field-dark">{totalFieldPlayers}</span> + GK
             </span>
             <span className="text-gray-500 text-sm">
-              Structure: <span className="font-bold">{autoName}</span>
+              <span className="font-bold">{autoName}</span>
             </span>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-3">
-            <button
-              onClick={onCancel}
-              className="flex-1 touch-target py-4 bg-gray-200 text-gray-700 font-semibold rounded-xl active:bg-gray-300"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={!name.trim() || totalFieldPlayers < 1}
-              className={`flex-1 touch-target py-4 font-bold rounded-xl ${
-                name.trim() && totalFieldPlayers >= 1
-                  ? 'bg-raiders-red text-white active:bg-raiders-red-dark'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
-            >
-              {initialTemplate ? 'Update' : 'Save'}
-            </button>
-          </div>
+          {/* Bottom spacer for sticky footer */}
+          <div className="h-4" />
+        </div>
+      </div>
+
+      {/* Sticky Footer - Save/Cancel */}
+      <div className="shrink-0 bg-white border-t border-gray-200 px-4 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.1)]">
+        <div className="flex gap-3 max-w-md mx-auto">
+          <button
+            onClick={onCancel}
+            className="flex-1 touch-target py-4 bg-gray-200 text-gray-700 font-semibold rounded-xl active:bg-gray-300"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={!name.trim() || totalFieldPlayers < 1}
+            className={`flex-1 touch-target py-4 font-bold rounded-xl ${
+              name.trim() && totalFieldPlayers >= 1
+                ? 'bg-raiders-red text-white active:bg-raiders-red-dark'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            {initialTemplate ? 'Update' : 'Save'}
+          </button>
         </div>
       </div>
     </div>
