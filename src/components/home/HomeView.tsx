@@ -11,8 +11,8 @@ import { HelpIcon } from '../help/HelpIcon';
 export default function HomeView() {
   const { navigateTo, players, currentGame } = useAppStore();
 
-  const hasRoster = players.length >= 9; // Need at least 9 to play
   const hasActiveGame = currentGame !== null;
+  const hasPlayers = players.length > 0;
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-b from-field-light to-field">
@@ -52,7 +52,7 @@ export default function HomeView() {
         )}
 
         {/* Start New Game */}
-        {!hasActiveGame && hasRoster && (
+        {!hasActiveGame && hasPlayers && (
           <button
             data-tour="start-game-button"
             onClick={() => navigateTo('game')}
@@ -100,16 +100,6 @@ export default function HomeView() {
           <div className="text-sm opacity-90">Season statistics</div>
         </button>
       </div>
-
-      {/* Warning if not enough players */}
-      {!hasRoster && (
-        <div className="mt-8 bg-red-500/20 backdrop-blur border-2 border-red-500/50 text-white px-6 py-4 rounded-xl max-w-md">
-          <div className="font-semibold mb-1">⚠️ Not enough players</div>
-          <div className="text-sm opacity-90">
-            Add at least 9 players to start a game
-          </div>
-        </div>
-      )}
 
       {/* Footer */}
       <div className="mt-12 text-white/60 text-sm text-center">

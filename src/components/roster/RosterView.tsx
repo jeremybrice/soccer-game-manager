@@ -144,12 +144,7 @@ export default function RosterView() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <div className="text-2xl font-bold text-gray-900">
-              {players.length} / 14 Players
-            </div>
-            <div className="text-sm text-gray-600">
-              {players.length >= 9
-                ? 'Ready to play'
-                : `Need ${9 - players.length} more to start`}
+              {players.length} {players.length === 1 ? 'Player' : 'Players'}
             </div>
           </div>
         </div>
