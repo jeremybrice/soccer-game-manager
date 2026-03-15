@@ -225,6 +225,11 @@ interface AppState {
   // ========================================================================
 
   /**
+   * Move a player directly to a specific position/slot (e.g., bench to empty field slot)
+   */
+  movePlayerToPosition: (playerId: string, position: Position, slot: number) => Promise<void>;
+
+  /**
    * Stage a player swap (any two players)
    */
   stageSwap: (player1Id: string, player2Id: string) => void;
@@ -1217,6 +1222,38 @@ export const useAppStore = create<AppState>()((set, get) => ({
   // ========================================================================
   // Staged Rotations Management (v3.2.0 - drag-drop based)
   // ========================================================================
+
+  movePlayerToPosition: async (playerId, position, slot) => {
+    const { currentAssignments, currentGame } = get();
+    if (!currentGame) return;
+
+    try {
+      const newAssignments = { ...currentAssignments };
+      newAssignments[playerId] = { position, slot };
+
+      await db.addRotation(currentGame.id, newAssignments);
+
+      const newRotation = {
+        id: crypto.randomUUID(),
+        timestamp: new Date(),
+        assignments: newAssignments,
+      };
+
+      set({
+        currentAssignments: newAssignments,
+        currentGame: {
+          ...currentGame,
+          rotations: [...currentGame.rotations, newRotation],
+        },
+      });
+
+      console.log(`[Store] Moved player ${playerId} to ${position} slot ${slot}`);
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to move player',
+      });
+    }
+  },
 
   stageSwap: (player1Id, player2Id) => {
     set((state) => {

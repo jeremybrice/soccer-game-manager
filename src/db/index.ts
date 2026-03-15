@@ -304,16 +304,11 @@ export class SoccerDatabase extends Dexie {
   // ========================================================================
 
   /**
-   * Get all formation templates (built-in first, then custom sorted by createdAt)
+   * Get all formation templates sorted by createdAt
    */
   async getFormationTemplates(): Promise<FormationTemplate[]> {
     const all = await this.formationTemplates.toArray();
-    return all.sort((a, b) => {
-      // Built-in templates first
-      if (a.isBuiltIn && !b.isBuiltIn) return -1;
-      if (!a.isBuiltIn && b.isBuiltIn) return 1;
-      return a.createdAt - b.createdAt;
-    });
+    return all.sort((a, b) => a.createdAt - b.createdAt);
   }
 
   /**
@@ -332,15 +327,11 @@ export class SoccerDatabase extends Dexie {
   }
 
   /**
-   * Delete a formation template (only custom templates)
+   * Delete a formation template
    */
   async deleteFormationTemplate(id: string): Promise<boolean> {
     const template = await this.formationTemplates.get(id);
     if (!template) return false;
-    if (template.isBuiltIn) {
-      console.warn(`[DB] Cannot delete built-in formation template: ${template.name}`);
-      return false;
-    }
     await this.formationTemplates.delete(id);
     console.log(`[DB] deleteFormationTemplate: Deleted '${template.name}'`);
     return true;

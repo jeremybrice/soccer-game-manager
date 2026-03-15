@@ -57,7 +57,7 @@ export interface FormationTemplate {
   name: string;
   rows: FormationRow[];       // Ordered top-to-bottom (FWD first → DEF last)
   createdAt: number;
-  isBuiltIn: boolean;         // true for default formations (can't be deleted)
+  isBuiltIn?: boolean;        // Legacy field, no longer restricts deletion
 }
 
 /**
@@ -123,7 +123,6 @@ export const BUILTIN_FORMATION_A: FormationTemplate = {
     { position: 'DEF', count: 3, labels: ['LD', 'CD', 'RD'] },
   ],
   createdAt: 0,
-  isBuiltIn: true,
 };
 
 export const BUILTIN_FORMATION_B: FormationTemplate = {
@@ -135,7 +134,6 @@ export const BUILTIN_FORMATION_B: FormationTemplate = {
     { position: 'DEF', count: 3, labels: ['LD', 'CD', 'RD'] },
   ],
   createdAt: 0,
-  isBuiltIn: true,
 };
 
 export const DEFAULT_FORMATIONS: FormationTemplate[] = [

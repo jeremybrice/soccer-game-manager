@@ -21,6 +21,7 @@ interface FieldFormationProps {
   selectedPlayerId: string | null;
   onPlayerTap: (playerId: string) => void;
   onGhostTap: (swapId: string) => void;
+  onEmptySlotTap?: (position: Position, slot: number) => void;
 }
 
 export default function FieldFormation({
@@ -32,6 +33,7 @@ export default function FieldFormation({
   selectedPlayerId,
   onPlayerTap,
   onGhostTap,
+  onEmptySlotTap,
 }: FieldFormationProps) {
   const { activeFormation } = useAppStore();
 
@@ -151,13 +153,25 @@ export default function FieldFormation({
               {playersInRow.map((player, index) =>
                 renderPlayerCard(player, labels[index])
               )}
-              {/* Fill empty spots */}
-              {Array.from({ length: row.count - playersInRow.length }).map((_, i) => (
-                <div
-                  key={`empty-${rowIndex}-${i}`}
-                  className="w-20 h-20 bg-white/20 rounded-xl border-2 border-dashed border-white/40"
-                />
-              ))}
+              {/* Fill empty spots - tappable when a bench player is selected */}
+              {Array.from({ length: row.count - playersInRow.length }).map((_, i) => {
+                const emptySlot = samePositionRowsBefore + playersInRow.length + i;
+                return (
+                  <button
+                    key={`empty-${rowIndex}-${i}`}
+                    onClick={() => onEmptySlotTap?.(row.position, emptySlot)}
+                    className={`w-20 h-20 bg-white/20 rounded-xl border-2 border-dashed transition-all ${
+                      selectedPlayerId
+                        ? 'border-green-400 bg-green-400/20 active:bg-green-400/40'
+                        : 'border-white/40'
+                    }`}
+                  >
+                    {selectedPlayerId && (
+                      <span className="text-white/70 text-xs font-semibold">+</span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
         );
@@ -199,9 +213,16 @@ export default function FieldFormation({
               );
             })()
           ) : (
-            <div className="w-20 h-20 bg-white/20 rounded-xl border-2 border-dashed border-white/40 flex items-center justify-center">
-              <span className="text-white/50 text-xs">Empty</span>
-            </div>
+            <button
+              onClick={() => onEmptySlotTap?.('GK', 0)}
+              className={`w-20 h-20 bg-white/20 rounded-xl border-2 border-dashed flex items-center justify-center transition-all ${
+                selectedPlayerId
+                  ? 'border-green-400 bg-green-400/20 active:bg-green-400/40'
+                  : 'border-white/40'
+              }`}
+            >
+              <span className="text-white/50 text-xs">{selectedPlayerId ? '+' : 'Empty'}</span>
+            </button>
           )}
         </div>
       </div>

@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../../store';
 import type { Position, PlayerPosition, PositionAssignments, FormationTemplate } from '../../types';
-import { MIN_PLAYERS_TO_START, RECOMMENDED_MIN_PLAYERS, createPlayerPosition, getFormationConfig } from '../../types';
+import { MIN_PLAYERS_TO_START, createPlayerPosition, getFormationConfig } from '../../types';
 import FormationSelector from './FormationSelector';
 import FormationPreview from './FormationPreview';
 
@@ -141,7 +141,6 @@ export default function FormationSetupView() {
   const fieldPlayerCount = Object.values(assignments).filter(p => p.position !== 'BENCH').length;
   const hasGK = Object.values(assignments).some(p => p.position === 'GK');
   const canStart = fieldPlayerCount >= MIN_PLAYERS_TO_START && hasGK;
-  const showWarning = fieldPlayerCount < RECOMMENDED_MIN_PLAYERS && fieldPlayerCount >= MIN_PLAYERS_TO_START;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-field-light to-field flex flex-col">
@@ -196,17 +195,6 @@ export default function FormationSetupView() {
               </div>
             </div>
           </div>
-
-          {/* Warning if low player count */}
-          {showWarning && (
-            <div className="bg-yellow-500/20 backdrop-blur border-2 border-yellow-500/50 text-yellow-900 px-6 py-4 rounded-xl">
-              <div className="font-semibold mb-1">Low Player Count</div>
-              <div className="text-sm">
-                You have {fieldPlayerCount} field players (recommended: {RECOMMENDED_MIN_PLAYERS}).
-                You can still start, but rotations may be limited.
-              </div>
-            </div>
-          )}
 
           {/* Actions */}
           <div className="space-y-3 pb-6">

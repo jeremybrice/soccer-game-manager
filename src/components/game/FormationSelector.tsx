@@ -100,23 +100,21 @@ export default function FormationSelector({
                 </div>
               </button>
 
-              {/* Edit/Delete for custom templates */}
-              {!template.isBuiltIn && (
-                <div className="flex gap-1 mt-1">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleEdit(template); }}
-                    className="flex-1 text-xs text-gray-500 hover:text-raiders-navy py-1 font-medium"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onDeleteTemplate(template.id); }}
-                    className="flex-1 text-xs text-gray-400 hover:text-red-500 py-1 font-medium"
-                  >
-                    Delete
-                  </button>
-                </div>
-              )}
+              {/* Edit/Delete */}
+              <div className="flex gap-1 mt-1">
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleEdit(template); }}
+                  className="flex-1 text-xs text-gray-500 hover:text-raiders-navy py-1 font-medium"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onDeleteTemplate(template.id); }}
+                  className="flex-1 text-xs text-gray-400 hover:text-red-500 py-1 font-medium"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           );
         })}

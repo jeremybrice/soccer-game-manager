@@ -113,11 +113,6 @@ export default function FormationsView() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-gray-900 truncate">{template.name}</span>
-                        {template.isBuiltIn && (
-                          <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded font-medium shrink-0">
-                            Built-in
-                          </span>
-                        )}
                       </div>
                       <div className="text-lg font-bold text-raiders-navy">{structure}</div>
                       <div className="text-xs text-gray-500">{fieldCount} + GK on field</div>
@@ -149,41 +144,39 @@ export default function FormationsView() {
                   </div>
                 </button>
 
-                {/* Action buttons for custom templates */}
-                {!template.isBuiltIn && (
-                  <div className="border-t border-gray-100 flex">
-                    <button
-                      onClick={() => handleEdit(template)}
-                      className="flex-1 touch-target py-3 text-sm font-semibold text-raiders-navy active:bg-gray-50"
-                    >
-                      Edit
-                    </button>
-                    <div className="w-px bg-gray-100" />
-                    {isConfirmingDelete ? (
-                      <div className="flex-1 flex">
-                        <button
-                          onClick={() => handleDelete(template.id)}
-                          className="flex-1 touch-target py-3 text-sm font-bold text-red-600 bg-red-50 active:bg-red-100"
-                        >
-                          Confirm
-                        </button>
-                        <button
-                          onClick={() => setConfirmDeleteId(null)}
-                          className="flex-1 touch-target py-3 text-sm font-semibold text-gray-500 active:bg-gray-50"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
+                {/* Action buttons */}
+                <div className="border-t border-gray-100 flex">
+                  <button
+                    onClick={() => handleEdit(template)}
+                    className="flex-1 touch-target py-3 text-sm font-semibold text-raiders-navy active:bg-gray-50"
+                  >
+                    Edit
+                  </button>
+                  <div className="w-px bg-gray-100" />
+                  {isConfirmingDelete ? (
+                    <div className="flex-1 flex">
                       <button
-                        onClick={() => setConfirmDeleteId(template.id)}
-                        className="flex-1 touch-target py-3 text-sm font-semibold text-red-500 active:bg-red-50"
+                        onClick={() => handleDelete(template.id)}
+                        className="flex-1 touch-target py-3 text-sm font-bold text-red-600 bg-red-50 active:bg-red-100"
                       >
-                        Delete
+                        Confirm
                       </button>
-                    )}
-                  </div>
-                )}
+                      <button
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="flex-1 touch-target py-3 text-sm font-semibold text-gray-500 active:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDeleteId(template.id)}
+                      className="flex-1 touch-target py-3 text-sm font-semibold text-red-500 active:bg-red-50"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}

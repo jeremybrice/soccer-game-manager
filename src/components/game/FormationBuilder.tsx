@@ -63,7 +63,7 @@ export default function FormationBuilder({
       name: name.trim(),
       rows,
       createdAt: initialTemplate?.createdAt || Date.now(),
-      isBuiltIn: initialTemplate?.isBuiltIn || false,
+      isBuiltIn: false,
     };
 
     onSave(template);

@@ -9,7 +9,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAppStore } from '../../store';
 import { formatTime } from '../../utils/stats';
-import type { GameSession, TimerState, PausePeriod } from '../../types';
+import type { GameSession, TimerState, PausePeriod, Position } from '../../types';
 import { getFormationStructure } from '../../types';
 import FieldFormation from './FieldFormation';
 import BenchArea from './BenchArea';
@@ -118,6 +118,7 @@ export default function GameView() {
     formationTemplates,
     activeFormation,
     changeFormationMidGame,
+    movePlayerToPosition,
   } = useAppStore();
 
   const [alertedPlayers, setAlertedPlayers] = useState<Set<string>>(new Set());
@@ -200,6 +201,18 @@ export default function GameView() {
       stageSwap(selectedPlayerId, playerId);
       setSelectedPlayerId(null);
     }
+  };
+
+  // Handle tapping an empty field slot — move selected bench player there
+  const handleEmptySlotTap = async (position: Position, slot: number) => {
+    if (!selectedPlayerId) return;
+
+    // Only allow moving bench players to empty slots
+    const playerPos = currentAssignments[selectedPlayerId];
+    if (!playerPos || playerPos.position !== 'BENCH') return;
+
+    await movePlayerToPosition(selectedPlayerId, position, slot);
+    setSelectedPlayerId(null);
   };
 
   return (
@@ -294,6 +307,7 @@ export default function GameView() {
               selectedPlayerId={selectedPlayerId}
               onPlayerTap={handlePlayerTap}
               onGhostTap={handleGhostTap}
+              onEmptySlotTap={handleEmptySlotTap}
             />
           </div>
 
