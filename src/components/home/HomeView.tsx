@@ -90,15 +90,26 @@ export default function HomeView() {
           </button>
         </div>
 
-        {/* View Stats */}
-        <button
-          data-tour="stats-button"
-          onClick={() => navigateTo('stats')}
-          className="w-full touch-target bg-raiders-navy-light hover:bg-raiders-navy text-white font-semibold py-6 px-8 rounded-2xl border-2 border-white/30 shadow-lg transform transition hover:scale-105 active:scale-95"
-        >
-          <div className="text-xl mb-1">View Stats</div>
-          <div className="text-sm opacity-90">Season statistics</div>
-        </button>
+        {/* Stats & Settings - side by side */}
+        <div className="flex gap-3">
+          <button
+            data-tour="stats-button"
+            onClick={() => navigateTo('stats')}
+            className="flex-1 touch-target bg-raiders-navy-light hover:bg-raiders-navy text-white font-semibold py-5 px-4 rounded-2xl border-2 border-white/30 shadow-lg transform transition hover:scale-105 active:scale-95"
+          >
+            <div className="text-lg mb-1">Stats</div>
+            <div className="text-xs opacity-90">Season statistics</div>
+          </button>
+
+          <button
+            data-tour="settings-button"
+            onClick={() => navigateTo('settings')}
+            className="flex-1 touch-target bg-raiders-navy-light hover:bg-raiders-navy text-white font-semibold py-5 px-4 rounded-2xl border-2 border-white/30 shadow-lg transform transition hover:scale-105 active:scale-95"
+          >
+            <div className="text-lg mb-1">Settings</div>
+            <div className="text-xs opacity-90">Game options</div>
+          </button>
+        </div>
       </div>
 
       {/* Warning if not enough players */}
@@ -113,7 +124,7 @@ export default function HomeView() {
 
       {/* Footer */}
       <div className="mt-12 text-white/60 text-sm text-center">
-        <p className="text-white/40 text-xs mt-1">v4.0.0 · St. Pete Raiders Edition</p>
+        <p className="text-white/40 text-xs mt-1">v4.1.0 · St. Pete Raiders Edition</p>
       </div>
     </div>
   );

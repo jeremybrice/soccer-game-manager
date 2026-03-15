@@ -10,7 +10,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAppStore } from '../../store';
 import { formatTime } from '../../utils/stats';
 import type { GameSession, TimerState, PausePeriod, Position } from '../../types';
-import { getFormationStructure } from '../../types';
+import { getFormationStructure, getPeriodLabel } from '../../types';
 import FieldFormation from './FieldFormation';
 import BenchArea from './BenchArea';
 import FormationSetupView from './FormationSetupView';
@@ -119,6 +119,8 @@ export default function GameView() {
     activeFormation,
     changeFormationMidGame,
     movePlayerToPosition,
+    // Settings (v3.3.0)
+    gameClockMode,
   } = useAppStore();
 
   const [alertedPlayers, setAlertedPlayers] = useState<Set<string>>(new Set());
@@ -229,13 +231,18 @@ export default function GameView() {
 
             <div className="text-center">
               <div className="text-3xl font-bold font-mono flex items-center justify-center">
-                <span className="bg-white/20 px-2 py-0.5 rounded text-xl mr-2">
-                  Q{quarterState.currentQuarter}
-                </span>
+                {gameClockMode !== 'simple' && (
+                  <span className="bg-white/20 px-2 py-0.5 rounded text-xl mr-2">
+                    {getPeriodLabel(gameClockMode, quarterState.currentQuarter)}
+                  </span>
+                )}
                 <span>
-                  {formatTime(Math.min(quarterState.quarterElapsedSeconds, quarterConfig.durationSeconds))}
+                  {gameClockMode === 'simple'
+                    ? formatTime(timer.elapsedSeconds)
+                    : formatTime(Math.min(quarterState.quarterElapsedSeconds, quarterConfig.durationSeconds))
+                  }
                 </span>
-                {quarterState.overtimeSeconds > 0 && (
+                {gameClockMode !== 'simple' && quarterState.overtimeSeconds > 0 && (
                   <span className="text-yellow-300 text-xl ml-1">
                     +{formatTime(quarterState.overtimeSeconds)}
                   </span>
@@ -243,7 +250,11 @@ export default function GameView() {
               </div>
               <div className="text-xs text-white/80">
                 {quarterState.isAutoStopped
-                  ? 'Quarter Complete'
+                  ? (gameClockMode === 'halves-with-breaks' && (quarterState.currentQuarter === 1 || quarterState.currentQuarter === 3)
+                    ? 'Water Break'
+                    : quarterState.currentQuarter >= quarterConfig.totalQuarters
+                      ? 'Game Complete'
+                      : 'Halftime')
                   : timer.isRunning
                     ? 'Game Time'
                     : 'Paused'}
@@ -395,6 +406,7 @@ export default function GameView() {
             mode={quarterState.isAutoStopped ? 'auto-stop' : 'manual-stop'}
             currentQuarter={quarterState.currentQuarter}
             totalQuarters={quarterConfig.totalQuarters}
+            gameClockMode={gameClockMode}
             onContinue={() => {
               continueQuarter();
               setShowQuarterModal(false);
