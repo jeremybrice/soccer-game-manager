@@ -1,56 +1,24 @@
 /**
  * Formation Selector Component (v4.0.0 - Flexible Formations)
  *
- * Philosophy: Clear visual choice. Immediate feedback.
- * Show all saved formation templates as scrollable cards.
- * "+" card to create new. Edit/delete for custom templates.
+ * Philosophy: Select only. No editing here.
+ * Editing/deleting/creating formations lives on the dedicated Formations page.
  */
 
-import { useState } from 'react';
 import type { FormationTemplate } from '../../types';
 import { getFormationStructure, getFormationFieldCount } from '../../types';
-import FormationBuilder from './FormationBuilder';
 
 interface FormationSelectorProps {
   templates: FormationTemplate[];
   selectedTemplateId: string;
   onSelect: (templateId: string) => void;
-  onSaveTemplate: (template: FormationTemplate) => void;
-  onDeleteTemplate: (templateId: string) => void;
 }
 
 export default function FormationSelector({
   templates,
   selectedTemplateId,
   onSelect,
-  onSaveTemplate,
-  onDeleteTemplate,
 }: FormationSelectorProps) {
-  const [showBuilder, setShowBuilder] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<FormationTemplate | undefined>();
-
-  const handleEdit = (template: FormationTemplate) => {
-    setEditingTemplate(template);
-    setShowBuilder(true);
-  };
-
-  const handleCreate = () => {
-    setEditingTemplate(undefined);
-    setShowBuilder(true);
-  };
-
-  const handleSave = (template: FormationTemplate) => {
-    onSaveTemplate(template);
-    onSelect(template.id);
-    setShowBuilder(false);
-    setEditingTemplate(undefined);
-  };
-
-  const handleCancel = () => {
-    setShowBuilder(false);
-    setEditingTemplate(undefined);
-  };
-
   return (
     <div className="bg-white/90 backdrop-blur rounded-xl p-4 shadow-lg">
       <h3 className="font-bold text-gray-900 mb-3">Select Formation</h3>
@@ -99,46 +67,10 @@ export default function FormationSelector({
                   </div>
                 </div>
               </button>
-
-              {/* Edit/Delete */}
-              <div className="flex gap-1 mt-1">
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleEdit(template); }}
-                  className="flex-1 text-xs text-gray-500 hover:text-raiders-navy py-1 font-medium"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); onDeleteTemplate(template.id); }}
-                  className="flex-1 text-xs text-gray-400 hover:text-red-500 py-1 font-medium"
-                >
-                  Delete
-                </button>
-              </div>
             </div>
           );
         })}
-
-        {/* Create New Template Card */}
-        <div className="snap-start shrink-0 w-36">
-          <button
-            onClick={handleCreate}
-            className="w-full touch-target p-3 rounded-xl border-2 border-dashed border-gray-300 text-gray-400 hover:border-raiders-red hover:text-raiders-red transition h-full min-h-[120px] flex flex-col items-center justify-center"
-          >
-            <div className="text-3xl mb-1">+</div>
-            <div className="text-xs font-semibold">New Formation</div>
-          </button>
-        </div>
       </div>
-
-      {/* Formation Builder Modal */}
-      {showBuilder && (
-        <FormationBuilder
-          initialTemplate={editingTemplate}
-          onSave={handleSave}
-          onCancel={handleCancel}
-        />
-      )}
     </div>
   );
 }

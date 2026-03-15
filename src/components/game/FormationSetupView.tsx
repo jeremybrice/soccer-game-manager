@@ -21,8 +21,6 @@ export default function FormationSetupView() {
     selectedFormationId,
     activeFormation,
     setActiveFormation,
-    saveFormationTemplate,
-    deleteFormationTemplate,
   } = useAppStore();
   const [assignments, setAssignments] = useState<PositionAssignments>({});
 
@@ -105,14 +103,6 @@ export default function FormationSetupView() {
     await setActiveFormation(templateId);
   };
 
-  const handleSaveTemplate = async (template: FormationTemplate) => {
-    await saveFormationTemplate(template);
-  };
-
-  const handleDeleteTemplate = async (templateId: string) => {
-    await deleteFormationTemplate(templateId);
-  };
-
   const handleStart = async () => {
     const fieldPlayerCount = Object.values(assignments).filter(p => p.position !== 'BENCH').length;
 
@@ -166,8 +156,6 @@ export default function FormationSetupView() {
             templates={formationTemplates}
             selectedTemplateId={selectedFormationId}
             onSelect={handleFormationSelect}
-            onSaveTemplate={handleSaveTemplate}
-            onDeleteTemplate={handleDeleteTemplate}
           />
 
           {/* Formation Preview with Player Assignment */}
