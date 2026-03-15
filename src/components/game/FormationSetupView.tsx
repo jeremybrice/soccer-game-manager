@@ -227,12 +227,6 @@ export default function FormationSetupView() {
               }
             </button>
 
-            <button
-              onClick={() => navigateTo('roster')}
-              className="w-full touch-target bg-white/90 hover:bg-white text-gray-700 font-semibold py-4 rounded-xl border-2 border-gray-300"
-            >
-              Adjust Roster First
-            </button>
           </div>
         </div>
       </div>

@@ -262,7 +262,7 @@ export interface FairnessMetrics {
 /**
  * Current view in the application
  */
-export type AppView = 'home' | 'roster' | 'game' | 'stats' | 'settings';
+export type AppView = 'home' | 'roster' | 'game' | 'stats' | 'settings' | 'formations';
 
 /**
  * Represents a single pause period during a game
