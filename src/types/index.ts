@@ -15,7 +15,7 @@
  * DEF: Defense (3 players)
  * MID: Midfield (3-4 players depending on formation)
  * FWD: Forward/Striker (1-2 players depending on formation)
- * BENCH: Not currently playing (5 players when full team of 14)
+ * BENCH: Not currently playing (remaining players not on field)
  */
 export type Position = 'GK' | 'DEF' | 'MID' | 'FWD' | 'BENCH';
 
@@ -148,7 +148,6 @@ export const FORMATION = FORMATION_A;
 export type FormationType = 'A' | 'B';
 
 export const MIN_PLAYERS_TO_START = 4; // 1 GK + 3 field players minimum
-export const RECOMMENDED_MIN_PLAYERS = 9; // Show warning below this
 
 // ============================================================================
 // Player Types
