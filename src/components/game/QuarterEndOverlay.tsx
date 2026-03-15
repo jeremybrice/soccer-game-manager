@@ -1,21 +1,30 @@
 /**
- * Quarter End Overlay - Modal for quarter management
+ * Period End Overlay - Modal for game clock period management
  *
  * Philosophy: Clear decision point. Simple options. No confusion.
  * Coach needs to quickly decide what to do next.
  *
  * Two modes:
- * - auto-stop: Quarter reached 15:00, options are Continue or Start Next
- * - manual-stop: User pressed stop button, options are Pause or End Quarter
+ * - auto-stop: Period reached its time limit, options are Continue or Start Next
+ * - manual-stop: User pressed stop button, options are Pause or End Period
+ *
+ * Adapts labels based on GameClockMode:
+ * - simple: No auto-stop; manual-stop shows Pause/End Game
+ * - halves: "Halftime!" / "2nd Half"
+ * - halves-with-breaks: "Water Break" / "Halftime!" depending on period
  */
+
+import type { GameClockMode } from '../../types';
+import { getTransitionInfo, getManualStopInfo } from '../../types';
 
 interface QuarterEndOverlayProps {
   mode: 'auto-stop' | 'manual-stop';
   currentQuarter: number;
   totalQuarters: number;
+  gameClockMode: GameClockMode;
   onContinue: () => void;    // Auto-stop: continue into overtime
   onPause: () => void;       // Manual-stop: just pause timer
-  onNextQuarter: () => void; // Advance to next quarter
+  onNextQuarter: () => void; // Advance to next period
   onEndGame: () => void;     // End the game
   onCancel?: () => void;     // Close modal without action (manual-stop only)
 }
@@ -24,36 +33,93 @@ export default function QuarterEndOverlay({
   mode,
   currentQuarter,
   totalQuarters,
+  gameClockMode,
   onContinue,
   onPause,
   onNextQuarter,
   onEndGame,
   onCancel,
 }: QuarterEndOverlayProps) {
-  const isLastQuarter = currentQuarter >= totalQuarters;
+  const isLastPeriod = currentQuarter >= totalQuarters;
+  const transitionInfo = getTransitionInfo(gameClockMode, currentQuarter, totalQuarters);
+  const manualInfo = getManualStopInfo(gameClockMode, currentQuarter, totalQuarters);
 
-  // Determine title and subtitle based on mode
   const getTitle = () => {
     if (mode === 'auto-stop') {
-      return isLastQuarter ? 'Game Complete!' : `Quarter ${currentQuarter} Complete`;
+      return transitionInfo.title;
     }
-    return `Quarter ${currentQuarter} Actions`;
+    return manualInfo.title;
   };
 
   const getSubtitle = () => {
     if (mode === 'auto-stop') {
-      return isLastQuarter
-        ? 'All quarters have been played.'
-        : 'Referee still playing? Tap Continue.';
+      return isLastPeriod
+        ? 'The game is over.'
+        : transitionInfo.subtitle;
     }
     return 'What would you like to do?';
   };
 
   const getIcon = () => {
     if (mode === 'auto-stop') {
-      return isLastQuarter ? '🏆' : '🏁';
+      if (isLastPeriod) return '🏆';
+      // Water break gets a special icon
+      if (gameClockMode === 'halves-with-breaks' && (currentQuarter === 1 || currentQuarter === 3)) {
+        return '💧';
+      }
+      return '🏁';
     }
     return '⏹';
+  };
+
+  // For progress indicator, show halves (not individual periods)
+  const getProgressDots = () => {
+    if (gameClockMode === 'simple') return null;
+
+    if (gameClockMode === 'halves') {
+      return (
+        <div className="mt-6 flex justify-center space-x-2">
+          {[1, 2].map((half) => (
+            <div
+              key={half}
+              className={`w-3 h-3 rounded-full ${
+                (half === 1 && currentQuarter > 1) || (half === 2 && currentQuarter > 2)
+                  ? 'bg-green-500'
+                  : (half === 1 && currentQuarter === 1) || (half === 2 && currentQuarter === 2)
+                    ? 'bg-yellow-500'
+                    : 'bg-gray-300'
+              }`}
+            />
+          ))}
+        </div>
+      );
+    }
+
+    // halves-with-breaks: show 2 half dots with sub-dots for water breaks
+    return (
+      <div className="mt-6 flex justify-center space-x-4">
+        {[1, 2].map((half) => {
+          const periods = half === 1 ? [1, 2] : [3, 4];
+          return (
+            <div key={half} className="flex items-center space-x-1">
+              <span className="text-xs text-gray-400 mr-1">{half}H</span>
+              {periods.map((period) => (
+                <div
+                  key={period}
+                  className={`w-2.5 h-2.5 rounded-full ${
+                    period < currentQuarter
+                      ? 'bg-green-500'
+                      : period === currentQuarter
+                        ? 'bg-yellow-500'
+                        : 'bg-gray-300'
+                  }`}
+                />
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   return (
@@ -76,29 +142,29 @@ export default function QuarterEndOverlay({
 
         {/* Action buttons */}
         <div className="space-y-3">
-          {mode === 'auto-stop' && !isLastQuarter && (
+          {mode === 'auto-stop' && !isLastPeriod && (
             <>
-              {/* Continue current quarter (referee hasn't stopped) */}
+              {/* Continue current period (referee still playing) */}
               <button
                 onClick={onContinue}
                 className="w-full touch-target bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-4 px-6 rounded-xl shadow-lg transform transition active:scale-95"
               >
-                <div className="text-lg">Continue Q{currentQuarter}</div>
+                <div className="text-lg">{transitionInfo.continueLabel}</div>
                 <div className="text-sm opacity-90">Referee still playing</div>
               </button>
 
-              {/* Start next quarter */}
+              {/* Start next period */}
               <button
                 onClick={onNextQuarter}
                 className="w-full touch-target bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-xl shadow-lg transform transition active:scale-95"
               >
-                <div className="text-lg">Start Q{currentQuarter + 1}</div>
-                <div className="text-sm opacity-90">Ready for next quarter</div>
+                <div className="text-lg">{transitionInfo.nextLabel}</div>
+                <div className="text-sm opacity-90">Ready to continue</div>
               </button>
             </>
           )}
 
-          {mode === 'auto-stop' && isLastQuarter && (
+          {mode === 'auto-stop' && isLastPeriod && (
             <button
               onClick={onEndGame}
               className="w-full touch-target bg-raiders-red hover:bg-raiders-red-dark text-white font-bold py-4 px-6 rounded-xl shadow-lg transform transition active:scale-95"
@@ -119,14 +185,14 @@ export default function QuarterEndOverlay({
                 <div className="text-sm opacity-90">Injury or timeout</div>
               </button>
 
-              {/* End Quarter / End Game */}
-              {!isLastQuarter ? (
+              {/* End Period / End Game */}
+              {!isLastPeriod && gameClockMode !== 'simple' ? (
                 <button
                   onClick={onNextQuarter}
                   className="w-full touch-target bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-xl shadow-lg transform transition active:scale-95"
                 >
-                  <div className="text-lg">End Quarter</div>
-                  <div className="text-sm opacity-90">Move to Q{currentQuarter + 1}</div>
+                  <div className="text-lg">{manualInfo.nextLabel}</div>
+                  <div className="text-sm opacity-90">Advance to next period</div>
                 </button>
               ) : (
                 <button
@@ -151,21 +217,8 @@ export default function QuarterEndOverlay({
           )}
         </div>
 
-        {/* Quarter indicator */}
-        <div className="mt-6 flex justify-center space-x-2">
-          {Array.from({ length: totalQuarters }, (_, i) => (
-            <div
-              key={i}
-              className={`w-3 h-3 rounded-full ${
-                i + 1 < currentQuarter
-                  ? 'bg-green-500' // Completed
-                  : i + 1 === currentQuarter
-                    ? 'bg-yellow-500' // Current
-                    : 'bg-gray-300' // Upcoming
-              }`}
-            />
-          ))}
-        </div>
+        {/* Progress indicator */}
+        {getProgressDots()}
       </div>
     </div>
   );

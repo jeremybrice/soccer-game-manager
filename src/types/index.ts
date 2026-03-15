@@ -282,20 +282,161 @@ export interface TimerState {
 }
 
 // ============================================================================
+// Game Clock Mode Types (v3.3.0 - Flexible Clock Settings)
+// ============================================================================
+
+/**
+ * Game clock mode options:
+ * - 'simple': Single continuous timer, no periods or breaks
+ * - 'halves': Two 30-minute halves with halftime auto-pause
+ * - 'halves-with-breaks': Two halves, each with a 15-minute water break midway
+ */
+export type GameClockMode = 'simple' | 'halves' | 'halves-with-breaks';
+
+// ============================================================================
 // Quarter Management Types
 // ============================================================================
 
 /**
- * Quarter configuration - customizable per league/age group
- * Default: 4 quarters x 15 minutes (youth soccer standard)
+ * Quarter/period configuration - derived from GameClockMode
+ * Reuses the quarter infrastructure internally:
+ * - simple: 1 period, effectively no auto-stop
+ * - halves: 2 periods × 30 min
+ * - halves-with-breaks: 4 periods × 15 min
  */
 export interface QuarterConfig {
-  durationSeconds: number;  // 900 = 15 minutes per quarter
-  totalQuarters: number;    // 4 quarters per game
+  durationSeconds: number;
+  totalQuarters: number;
 }
 
 /**
- * Default quarter configuration for youth soccer
+ * Derive QuarterConfig from a GameClockMode
+ */
+export const getQuarterConfigForMode = (mode: GameClockMode): QuarterConfig => {
+  switch (mode) {
+    case 'simple':
+      return { durationSeconds: 99999, totalQuarters: 1 };
+    case 'halves':
+      return { durationSeconds: 1800, totalQuarters: 2 };
+    case 'halves-with-breaks':
+      return { durationSeconds: 900, totalQuarters: 4 };
+  }
+};
+
+/**
+ * Get the period display label for the timer header (e.g., "1H", "2H")
+ * Returns empty string for simple mode (no label shown)
+ */
+export const getPeriodLabel = (mode: GameClockMode, period: number): string => {
+  switch (mode) {
+    case 'simple':
+      return '';
+    case 'halves':
+      return period === 1 ? '1H' : '2H';
+    case 'halves-with-breaks':
+      // Periods 1-2 are first half, 3-4 are second half
+      return period <= 2 ? '1H' : '2H';
+  }
+};
+
+/**
+ * Get the transition title and action label shown in the overlay when a period ends
+ */
+export const getTransitionInfo = (
+  mode: GameClockMode,
+  period: number,
+  totalPeriods: number
+): { title: string; subtitle: string; continueLabel: string; nextLabel: string } => {
+  const isLast = period >= totalPeriods;
+
+  if (isLast) {
+    return {
+      title: 'Game Complete!',
+      subtitle: 'The game is over.',
+      continueLabel: '',
+      nextLabel: '',
+    };
+  }
+
+  if (mode === 'halves') {
+    return {
+      title: 'Halftime!',
+      subtitle: 'First half complete.',
+      continueLabel: 'Continue 1st Half',
+      nextLabel: 'Start 2nd Half',
+    };
+  }
+
+  // halves-with-breaks: period 1 = water break, period 2 = halftime, period 3 = water break
+  if (mode === 'halves-with-breaks') {
+    if (period === 1) {
+      return {
+        title: 'Water Break',
+        subtitle: 'Midway through the 1st half.',
+        continueLabel: 'Continue 1st Half',
+        nextLabel: 'Resume After Break',
+      };
+    } else if (period === 2) {
+      return {
+        title: 'Halftime!',
+        subtitle: 'First half complete.',
+        continueLabel: 'Continue 1st Half',
+        nextLabel: 'Start 2nd Half',
+      };
+    } else if (period === 3) {
+      return {
+        title: 'Water Break',
+        subtitle: 'Midway through the 2nd half.',
+        continueLabel: 'Continue 2nd Half',
+        nextLabel: 'Resume After Break',
+      };
+    }
+  }
+
+  // Fallback (shouldn't reach here)
+  return {
+    title: `Period ${period} Complete`,
+    subtitle: 'Ready for the next period.',
+    continueLabel: `Continue Period ${period}`,
+    nextLabel: `Start Period ${period + 1}`,
+  };
+};
+
+/**
+ * Get the status text shown in the overlay for manual stop
+ */
+export const getManualStopInfo = (
+  mode: GameClockMode,
+  period: number,
+  totalPeriods: number
+): { title: string; nextLabel: string } => {
+  const isLast = period >= totalPeriods;
+
+  if (mode === 'simple') {
+    return { title: 'Game Actions', nextLabel: 'End Game' };
+  }
+
+  if (isLast) {
+    return { title: 'Game Actions', nextLabel: 'End Game' };
+  }
+
+  if (mode === 'halves') {
+    return {
+      title: period === 1 ? '1st Half Actions' : '2nd Half Actions',
+      nextLabel: period === 1 ? 'End 1st Half' : 'End Game',
+    };
+  }
+
+  // halves-with-breaks
+  const halfLabel = period <= 2 ? '1st Half' : '2nd Half';
+  return {
+    title: `${halfLabel} Actions`,
+    nextLabel: isLast ? 'End Game' : (period === 2 ? 'Start 2nd Half' : 'End Period'),
+  };
+};
+
+/**
+ * Default quarter configuration for youth soccer (halves-with-breaks mode)
  */
 export const DEFAULT_QUARTER_CONFIG: QuarterConfig = {
   durationSeconds: 900,  // 15 minutes
@@ -307,11 +448,11 @@ export const DEFAULT_QUARTER_CONFIG: QuarterConfig = {
  * Tracks current quarter progress and overtime when referee extends play
  */
 export interface QuarterState {
-  currentQuarter: number;           // 1-4 (which quarter we're in)
-  quarterStartedAt?: Date;          // When current quarter clock started
-  quarterElapsedSeconds: number;    // Seconds elapsed in current quarter
-  isAutoStopped: boolean;           // True when auto-paused at quarter end
-  overtimeSeconds: number;          // Seconds continued past quarter duration (referee flexibility)
+  currentQuarter: number;           // 1-4 (which period we're in)
+  quarterStartedAt?: Date;          // When current period clock started
+  quarterElapsedSeconds: number;    // Seconds elapsed in current period
+  isAutoStopped: boolean;           // True when auto-paused at period end
+  overtimeSeconds: number;          // Seconds continued past period duration (referee flexibility)
 }
 
 /**

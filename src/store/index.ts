@@ -17,8 +17,9 @@ import type {
   StagedSwap,
   QuarterConfig,
   QuarterState,
+  GameClockMode,
 } from '../types';
-import { DEFAULT_QUARTER_CONFIG, DEFAULT_QUARTER_STATE, BUILTIN_FORMATION_A, DEFAULT_FORMATIONS } from '../types';
+import { DEFAULT_QUARTER_CONFIG, DEFAULT_QUARTER_STATE, BUILTIN_FORMATION_A, DEFAULT_FORMATIONS, getQuarterConfigForMode } from '../types';
 import { db } from '../db';
 import {
   exportPlayersToCSV as exportCSV,
@@ -39,6 +40,9 @@ interface AppState {
   // UI State
   currentView: AppView;
   timer: TimerState;
+
+  // Game Clock Mode (v3.3.0 - Settings)
+  gameClockMode: GameClockMode;
 
   // Quarter Management State (v3.1.0)
   quarterConfig: QuarterConfig;
@@ -183,6 +187,20 @@ interface AppState {
   startNextQuarter: () => void;
 
   // ========================================================================
+  // Settings Actions (v3.3.0)
+  // ========================================================================
+
+  /**
+   * Set game clock mode and persist to preferences
+   */
+  setGameClockMode: (mode: GameClockMode) => Promise<void>;
+
+  /**
+   * Load game clock mode from preferences
+   */
+  loadGameClockMode: () => Promise<void>;
+
+  // ========================================================================
   // Navigation Actions
   // ========================================================================
 
@@ -309,6 +327,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     totalPausedDuration: 0,
     pausePeriods: [],
   },
+  gameClockMode: 'halves-with-breaks' as GameClockMode,
   quarterConfig: DEFAULT_QUARTER_CONFIG,
   quarterState: DEFAULT_QUARTER_STATE,
   formationTemplates: DEFAULT_FORMATIONS,
@@ -333,6 +352,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       await get().loadActiveGame();
       await get().loadTutorialStatus();
       await get().loadFormationTemplates();
+      await get().loadGameClockMode();
       set({ isLoading: false });
     } catch (error) {
       set({
@@ -505,8 +525,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
           pausedAt: undefined,
           startedAt: undefined,
         },
-        // Initialize quarter state for new game (v3.1.0)
-        quarterConfig: DEFAULT_QUARTER_CONFIG,
+        // Initialize quarter config from game clock mode setting (v3.3.0)
+        quarterConfig: getQuarterConfigForMode(get().gameClockMode),
         quarterState: {
           currentQuarter: 1,
           quarterElapsedSeconds: 0,
@@ -978,6 +998,32 @@ export const useAppStore = create<AppState>()((set, get) => ({
     }
 
     console.log(`[Quarter] Advanced to Q${nextQuarter} - ready to start`);
+  },
+
+  // ========================================================================
+  // Settings (v3.3.0)
+  // ========================================================================
+
+  setGameClockMode: async (mode) => {
+    try {
+      await db.saveUserPreference('gameClockMode', mode);
+      set({ gameClockMode: mode });
+      console.log(`[Store] Game clock mode set to '${mode}'`);
+    } catch (error) {
+      console.error('[Store] Failed to save game clock mode:', error);
+    }
+  },
+
+  loadGameClockMode: async () => {
+    try {
+      const mode = await db.getUserPreference('gameClockMode');
+      if (mode === 'simple' || mode === 'halves' || mode === 'halves-with-breaks') {
+        set({ gameClockMode: mode });
+      }
+      // Otherwise keep default 'halves-with-breaks'
+    } catch (error) {
+      console.error('[Store] Failed to load game clock mode:', error);
+    }
   },
 
   // ========================================================================
